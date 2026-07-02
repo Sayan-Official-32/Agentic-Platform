@@ -128,6 +128,8 @@ export default function Home() {
   const [hideRightPanel, setHideRightPanel] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  
   const resizeStateRef = useRef<{
     target: "left" | "right" | null;
     startX: number;
@@ -177,6 +179,11 @@ export default function Home() {
       document.body.classList.add(`${theme}-mode`);
     }
   }, [theme]);
+
+  // Scroll to bottom when messages or loading state changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   useEffect(() => {
     const updateViewMode = () => {
@@ -993,6 +1000,7 @@ export default function Home() {
                     </div>
                   </div>
                 ) : null}
+                <div ref={messagesEndRef} />
               </div>
 
               <div className="prompt-dock">

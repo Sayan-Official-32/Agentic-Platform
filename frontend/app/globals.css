@@ -7,9 +7,9 @@
   --bg-page: #030303;
   --bg-gradient: radial-gradient(circle at top, #0c0b11 0%, #030303 100%);
   
-  --surface-glass: rgba(15, 15, 22, 0.45);
-  --surface-glass-hover: rgba(22, 22, 32, 0.65);
-  --surface-panel: rgba(10, 10, 15, 0.75);
+  --surface-glass: rgba(15, 15, 22, 0.85);
+  --surface-glass-hover: rgba(22, 22, 32, 0.92);
+  --surface-panel: rgba(10, 10, 15, 0.95);
   --surface-input: rgba(6, 6, 8, 0.95);
   
   /* Borders */
@@ -64,9 +64,9 @@ body.light-mode {
   --bg-page: #f8f9fa;
   --bg-gradient: radial-gradient(circle at top, #eef2f6 0%, #f8f9fa 100%);
   
-  --surface-glass: rgba(255, 255, 255, 0.7);
-  --surface-glass-hover: rgba(255, 255, 255, 0.85);
-  --surface-panel: rgba(241, 243, 245, 0.8);
+  --surface-glass: rgba(255, 255, 255, 0.92);
+  --surface-glass-hover: rgba(255, 255, 255, 0.97);
+  --surface-panel: rgba(243, 244, 246, 0.96);
   --surface-input: #ffffff;
   
   --border-glass: rgba(0, 0, 0, 0.06);
@@ -236,13 +236,26 @@ body.light-mode .auth-title {
 }
 
 .corner-card {
-  padding: 16px;
-  border-radius: var(--radius-premium);
+  padding: 6px 12px;
+  border-radius: 12px;
   border: 1px solid var(--border-glass);
   background: rgba(255, 255, 255, 0.015);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+}
+.corner-card .status-row {
+  width: auto;
+  font-size: 12px;
+}
+.corner-card .status-label {
+  font-size: 12px;
+}
+.corner-card .status-text {
+  font-size: 10.5px;
 }
 body.light-mode .corner-card {
   background: rgba(0, 0, 0, 0.01);
@@ -657,6 +670,8 @@ body.light-mode .nav-icon-btn:hover {
   gap: 12px;
   overflow-y: auto;
   min-width: 0;
+  will-change: transform;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-sticky {
@@ -674,8 +689,6 @@ body.light-mode .nav-icon-btn:hover {
   border-radius: var(--radius-premium);
   border: 1px solid var(--border-glass);
   background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -952,8 +965,7 @@ body.light-mode .status-card:hover {
   align-items: center;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.015);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 10, 15, 0.2);
 }
 
 .chat-header-left {
@@ -1002,6 +1014,8 @@ body.light-mode .status-card:hover {
   flex-direction: column;
   gap: 20px;
   background: radial-gradient(circle at center top, rgba(99, 102, 241, 0.015) 0%, transparent 60%);
+  will-change: transform;
+  -webkit-overflow-scrolling: touch;
 }
 
 .message-row {
@@ -1158,8 +1172,7 @@ body.light-mode .inline-code {
 /* Prompt / Composer Dock */
 .prompt-dock {
   border-top: 1px solid var(--border-glass);
-  background: rgba(10, 10, 15, 0.95);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 10, 15, 0.98);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -1358,6 +1371,8 @@ body.light-mode .composer-tool-btn:hover {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  will-change: transform;
+  -webkit-overflow-scrolling: touch;
 }
 
 .terminal-block {
@@ -1401,8 +1416,8 @@ body.light-mode .terminal-block-title {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding-left: 14px;
-  margin-left: 6px;
+  padding-left: 22px;
+  margin-left: 0px;
   margin-top: 4px;
   max-height: 220px;
   overflow-y: auto;
@@ -1412,7 +1427,7 @@ body.light-mode .terminal-block-title {
 .timeline-container::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: 8px;
   top: 6px;
   bottom: 6px;
   width: 1px;

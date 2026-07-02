@@ -26,7 +26,9 @@ import {
   Keyboard,
   Bell,
   Code,
-  Sidebar
+  Sidebar,
+  Sun,
+  Moon
 } from "lucide-react";
 
 type AgentResult = {
@@ -124,6 +126,7 @@ export default function Home() {
   const [rightPanelWidth, setRightPanelWidth] = useState(340);
   const [hideLeftPanel, setHideLeftPanel] = useState(false);
   const [hideRightPanel, setHideRightPanel] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   
   const resizeStateRef = useRef<{
     target: "left" | "right" | null;
@@ -166,6 +169,14 @@ export default function Home() {
 
     return () => window.clearInterval(interval);
   }, []);
+
+  // Update theme class on document body
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      document.body.classList.remove("light-mode", "dark-mode");
+      document.body.classList.add(`${theme}-mode`);
+    }
+  }, [theme]);
 
   useEffect(() => {
     const updateViewMode = () => {
@@ -750,9 +761,16 @@ export default function Home() {
               <button
                 type="button"
                 className="nav-icon-btn"
+                onClick={() => setTheme(prev => prev === "dark" ? "light" : "dark")}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+              </button>
+              <button
+                type="button"
+                className="nav-icon-btn"
                 onClick={() => setHideRightPanel(prev => !prev)}
                 title={hideRightPanel ? "Show right sidebar" : "Hide right sidebar"}
-                style={{ marginRight: 4 }}
               >
                 <Sidebar size={13} style={{ transform: "scaleX(-1)" }} />
               </button>

@@ -5,7 +5,7 @@
 
   /* Premium Dark Palette */
   --bg-page: #030303;
-  --bg-gradient: radial-gradient(circle at top, #0c0b11 0%, #030303 100%);
+  --bg-gradient: radial-gradient(circle at top, #061812 0%, #030303 100%);
   
   --surface-glass: rgba(15, 15, 22, 0.85);
   --surface-glass-hover: rgba(22, 22, 32, 0.92);
@@ -15,15 +15,15 @@
   /* Borders */
   --border-glass: rgba(255, 255, 255, 0.05);
   --border-glass-hover: rgba(255, 255, 255, 0.12);
-  --border-focus: rgba(99, 102, 241, 0.35);
-  --border-accent: rgba(99, 102, 241, 0.15);
+  --border-focus: rgba(16, 185, 129, 0.35);
+  --border-accent: rgba(16, 185, 129, 0.15);
 
   /* Accents */
-  --color-primary: #818cf8;
-  --color-primary-hover: #a5b4fc;
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --gradient-primary-hover: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
-  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.2);
+  --color-primary: #10b981;
+  --color-primary-hover: #34d399;
+  --gradient-primary: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --shadow-glow: 0 0 24px rgba(16, 185, 129, 0.2);
   --shadow-card: 0 16px 40px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
 
   /* Status Colors */
@@ -62,7 +62,7 @@ body {
 /* Light Theme Variable Overrides */
 body.light-mode {
   --bg-page: #f8f9fa;
-  --bg-gradient: radial-gradient(circle at top, #eef2f6 0%, #f8f9fa 100%);
+  --bg-gradient: radial-gradient(circle at top, #ebf5f1 0%, #f8f9fa 100%);
   
   --surface-glass: rgba(255, 255, 255, 0.92);
   --surface-glass-hover: rgba(255, 255, 255, 0.97);
@@ -71,8 +71,8 @@ body.light-mode {
   
   --border-glass: rgba(0, 0, 0, 0.06);
   --border-glass-hover: rgba(0, 0, 0, 0.12);
-  --border-focus: rgba(99, 102, 241, 0.5);
-  --border-accent: rgba(99, 102, 241, 0.2);
+  --border-focus: rgba(16, 185, 129, 0.5);
+  --border-accent: rgba(16, 185, 129, 0.2);
 
   --shadow-card: 0 12px 32px -8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
   
@@ -89,7 +89,7 @@ body::before {
   left: 20%;
   width: 60%;
   height: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, transparent 70%);
   z-index: -1;
   pointer-events: none;
   filter: blur(90px);
@@ -180,7 +180,7 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 
 .brand-mono svg {
   color: var(--color-primary);
-  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.4));
   margin-right: 8px;
 }
 
@@ -378,7 +378,7 @@ body.light-mode .input-field {
 
 .input-field:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary), 0 0 16px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 1px var(--color-primary), 0 0 16px rgba(16, 185, 129, 0.15);
 }
 
 /* --- Premium Buttons --- */
@@ -393,7 +393,7 @@ body.light-mode .input-field {
   font-weight: 600;
   cursor: pointer;
   padding: 0 18px;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
   transition: var(--transition-smooth);
   display: inline-flex;
   align-items: center;
@@ -403,7 +403,7 @@ body.light-mode .input-field {
 
 .btn-primary:hover:not(:disabled) {
   background: var(--gradient-primary-hover);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
   transform: translateY(-1px);
 }
 
@@ -457,7 +457,7 @@ body.light-mode .btn-secondary:hover:not(:disabled) {
 }
 
 .btn-primary-square {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(16, 185, 129, 0.08);
   border: 1px solid var(--border-accent);
   color: var(--color-primary);
   box-shadow: none;
@@ -466,7 +466,7 @@ body.light-mode .btn-secondary:hover:not(:disabled) {
 }
 
 .btn-primary-square:hover {
-  background: rgba(99, 102, 241, 0.18);
+  background: rgba(16, 185, 129, 0.18);
   border-color: var(--color-primary);
   color: #ffffff;
 }
@@ -560,7 +560,7 @@ body.light-mode .top-nav {
 
 .nav-brand svg {
   color: var(--color-primary);
-  filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.4));
 }
 
 .project-selector {
@@ -643,7 +643,7 @@ body.light-mode .nav-icon-btn:hover {
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
   transition: var(--transition-smooth);
 }
 
@@ -733,7 +733,7 @@ body.light-mode .resize-divider::after {
 }
 
 .resize-divider:hover {
-  background: rgba(99, 102, 241, 0.02);
+  background: rgba(16, 185, 129, 0.02);
 }
 
 /* --- Panel Elements --- */
@@ -1013,7 +1013,7 @@ body.light-mode .status-card:hover {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  background: radial-gradient(circle at center top, rgba(99, 102, 241, 0.015) 0%, transparent 60%);
+  background: radial-gradient(circle at center top, rgba(16, 185, 129, 0.015) 0%, transparent 60%);
   will-change: transform;
   -webkit-overflow-scrolling: touch;
 }
@@ -1049,7 +1049,7 @@ body.light-mode .status-card:hover {
 .message-row-user .avatar-badge {
   background: var(--gradient-primary);
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
 }
 
 .message-row-assistant .avatar-badge {
@@ -1086,7 +1086,7 @@ body.light-mode .message-row-user .message-bubble {
   color: var(--text-primary);
   border-top-left-radius: 2px;
   border: 1px solid var(--border-glass);
-  box-shadow: 0 0 16px rgba(99, 102, 241, 0.02);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.02);
 }
 body.light-mode .message-row-assistant .message-bubble {
   background: rgba(0, 0, 0, 0.015);
@@ -1241,7 +1241,7 @@ body.light-mode .prompt-chip-btn {
 
 .prompt-chip-btn:hover {
   border-color: var(--color-primary);
-  background: rgba(99, 102, 241, 0.06);
+  background: rgba(16, 185, 129, 0.06);
   color: var(--text-primary);
   transform: translateY(-1px);
 }
@@ -1264,7 +1264,7 @@ body.light-mode .composer-box {
 
 .composer-box:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary), 0 0 20px rgba(99, 102, 241, 0.18);
+  box-shadow: 0 0 0 1px var(--color-primary), 0 0 20px rgba(16, 185, 129, 0.18);
 }
 
 .composer-textarea {

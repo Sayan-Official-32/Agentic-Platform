@@ -3,6 +3,8 @@
 # Pydantic validates incoming JSON request payloads automatically before the FastAPI endpoints run.
 # If a client sends an invalid email or short password, FastAPI automatically returns an HTTP 422 Unprocessable Entity error.
 
+from uuid import UUID
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -40,6 +42,8 @@ class UserResponse(BaseModel):
     Simple schema for user details, hiding sensitive fields (like hashed passwords).
     Used to return user information in the /status endpoint.
     """
+    id: UUID
     email: EmailStr
+    full_name: Optional[str] = None
 
 

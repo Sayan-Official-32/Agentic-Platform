@@ -65,3 +65,15 @@ websockets==15.0.1
 wrapt==2.2.1
 xxhash==3.7.0
 zstandard==0.25.0
+
+# Supabase + pgvector dependencies
+supabase>=2.4.0
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+sentence-transformers>=3.0.0
+torch>=2.0.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
+python-pptx>=1.0.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0

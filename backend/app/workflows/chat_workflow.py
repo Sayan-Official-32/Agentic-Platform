@@ -55,7 +55,7 @@ class ChatWorkflow:
         self.search_agent = SearchAgent(self.search_service)
         
     @observe(name="chat_workflow")
-    async def run(self, request: ChatRequest) -> ChatResponse:
+    async def run(self, request: ChatRequest, user_id: uuid.UUID) -> ChatResponse:
         """
         Runs the conversational multi-agent logic cycle.
         """
@@ -64,8 +64,8 @@ class ChatWorkflow:
         # Set the logger's thread-local context variables for request tracking
         set_log_context(thread_id=conversation_id, agent_type="workflow")
         
-        # 2. Check if this exact question has a cached response in Redis
-        cache_key = f"chat:{conversation_id}:{request.message.strip().lower()}"
+        # 2. Check if this exact question has a cached response in Redis (user-scoped)
+        cache_key = f"chat:{user_id}:{conversation_id}:{request.message.strip().lower()}"
         cached_answer = self.cache_service.get_value(cache_key)
         # Fetch previous conversation history list from Redis memory
         stored_context = self.memory_service.get_messages(conversation_id)
@@ -76,6 +76,7 @@ class ChatWorkflow:
                 "conversation_id": conversation_id,
                 "history_count": len(request.history),
                 "message_preview": request.message[:120],
+                "user_id": str(user_id)
             },
         )
 
@@ -110,6 +111,7 @@ class ChatWorkflow:
             user_message=request.message,
             history=request.history,
             conversation_context=conversation_context,
+            user_id=user_id
         )
         
         # 6. Ask the Supervisor to select the routing path based on the user's message

@@ -35,13 +35,13 @@ async def chat(request: ChatRequest, current_user: UserResponse = Depends(get_cu
     logger.info(
         "Chat API request received.",
         extra={
-            "user_id": current_user.email,
+            "user_id": str(current_user.id),
             "conversation_id": request.conversation_id or "new",
             "message_preview": request.message[:120],
         },
     )
-    # Trigger and await the asynchronous agent workflow run
-    return await workflow.run(request)
+    # Trigger and await the asynchronous agent workflow run, scoped by user ID
+    return await workflow.run(request, current_user.id)
 
 
 @router.get("/conversations/{conversation_id}/context", response_model=ConversationContextResponse)

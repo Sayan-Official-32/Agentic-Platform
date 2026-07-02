@@ -59,13 +59,35 @@ class Settings(BaseModel):
     # redis_ttl_seconds determines how long (in seconds) the conversation history is kept in Redis before it expires (3600s = 1 hour).
     redis_ttl_seconds: int = int(os.getenv("REDIS_TTL_SECONDS", "3600"))
     
-    # --- Elasticsearch Configuration (Retrieval Augmented Generation / RAG) ---
+    # --- Elasticsearch Configuration (Retrieval Augmented Generation / RAG - Deprecated/Compatibility) ---
     # Elasticsearch indexes document chunks from uploaded PDFs/CSVs for text/vector search.
     elasticsearch_url: str = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
     elasticsearch_index: str = os.getenv("ELASTICSEARCH_INDEX", "starter_documents")
     elasticsearch_api_key: str = os.getenv("ELASTICSEARCH_API_KEY", "")
     elasticsearch_user: str = os.getenv("ELASTICSEARCH_USER", "elastic")
     elasticsearch_password: str = os.getenv("ELASTICSEARCH_PASSWORD", "")
+
+    # --- Supabase Configuration ---
+    supabase_url: str = os.getenv("SUPABASE_URL", "")
+    supabase_service_key: str = os.getenv("SUPABASE_SERVICE_KEY", "")
+    supabase_storage_bucket: str = os.getenv("SUPABASE_STORAGE_BUCKET", "user-documents")
+
+    # --- Embedding Model Settings ---
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+    embedding_dims: int = int(os.getenv("EMBEDDING_DIMS", "384"))
+    embedding_cache_ttl: int = int(os.getenv("EMBEDDING_CACHE_TTL", "86400"))
+
+    # --- Text Chunking Settings ---
+    chunk_size: int = int(os.getenv("CHUNK_SIZE", "500"))
+    chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "50"))
+
+    # --- Vector Search Settings ---
+    vector_top_k: int = int(os.getenv("VECTOR_TOP_K", "10"))
+
+    # --- Reranker Model Settings ---
+    reranker_enabled: bool = os.getenv("RERANKER_ENABLED", "true").lower() == "true"
+    reranker_model: str = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    reranker_top_k: int = int(os.getenv("RERANKER_TOP_K", "5"))
     
     # --- Langfuse Configuration (LLM Tracing & Observability) ---
     # Langfuse is used to trace LLM calls, costs, latency, and steps in multi-agent workflows.

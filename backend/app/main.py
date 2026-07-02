@@ -31,6 +31,7 @@ from app.routers.auth_router import router as auth_router
 from app.routers.health_router import router as health_router
 from app.routers.ingest_router import router as ingest_router
 from app.routers.chat_router import router as chat_router
+from app.routers.files_router import router as files_router
 
 # Configure uvicorn's internal logging so it matches our application's formatting style
 configure_uvicorn_logging()
@@ -41,7 +42,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title=settings.app_name,
     version="0.0.1",
-    description="Starter multi-agent backend with auth, Redis memory, Elasticsearch search, and router-based modular structure."
+    description="Starter multi-agent backend with auth, Redis memory, Supabase pgvector search, and router-based modular structure."
 )
 
 # Register middlewares in the FastAPI app stack.
@@ -74,7 +75,9 @@ app.add_middleware(
 app.include_router(health_router)
 # Auth router handles registration, login, and profile operations.
 app.include_router(auth_router)
-# Ingest router processes files (PDFs, CSVs) and indexes them into Elasticsearch.
+# Files router handles listing, fetching, and deleting user-uploaded files.
+app.include_router(files_router)
+# Ingest router processes files (PDFs, CSVs) and indexes them into Supabase pgvector.
 app.include_router(ingest_router)
 # Chat router coordinates user messages, the supervisor, and worker agents.
 app.include_router(chat_router)

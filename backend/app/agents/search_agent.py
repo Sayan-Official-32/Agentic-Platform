@@ -48,8 +48,8 @@ class SearchAgent:
             extra={"route": state.route, "message_preview": state.user_message[:120]},
         )
         
-        # 1. Query Elasticsearch using the search service
-        results = await self.search_service.search(state.user_message)
+        # 1. Query pgvector using the search service
+        results = await self.search_service.search(state.user_message, user_id=state.user_id)
 
         # 2. Save raw hits list into the shared state object
         state.search_results = results
@@ -68,7 +68,7 @@ class SearchAgent:
                 f"{index + 1}. {item.title}{location} — {item.snippet}"
             )
 
-        output = "Search results from Elasticsearch:\n" + "\n".join(lines) if lines else "No matching documents found."
+        output = "Search results from pgvector:\n" + "\n".join(lines) if lines else "No matching documents found."
         
         # 4. Save the formatted text block to the state
         state.search_output = output

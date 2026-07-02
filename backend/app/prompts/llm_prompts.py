@@ -1,18 +1,23 @@
-"""
-Centralized prompt templates for LLM operations
-"""
+# prompts/llm_prompts.py
+# This module defines the LLMPrompts class.
+# Prompt engineering is the practice of structuring text inputs (prompts) to guide LLM behavior.
+# This class acts as a centralized repository of template methods returning formatted prompts.
+# It uses standard Python f-strings to inject user queries, history, and document snippets dynamically.
+
 from typing import Dict
 
 
 class LLMPrompts:
     """
-    Collection of prompt templates for different LLM capabilities.
+    Static collection of prompt templates for various multi-agent tasks.
+    Each method takes parameters and formats them into instructions for the LLM.
     """
     
     @staticmethod
-    
-    
     def summarization(text: str, context: str = "") -> str:
+        """
+        Creates a prompt asking the model to summarize a document while respecting chat history context.
+        """
         return f"""You are answering a user's question using retrieved business documents.
 
 Question:
@@ -33,7 +38,7 @@ Answer:"""
     @staticmethod
     def code_generation(description: str, language: str = "python") -> str:
         """
-        Prompt template for code generation
+        Creates a prompt asking the model to write code in a specific language (e.g. Python, SQL).
         """
         return f"""Generate {language} code for the following task:
 
@@ -44,7 +49,7 @@ Answer:"""
     @staticmethod
     def question_answering(question: str, context: str = "") -> str:
         """
-        Prompt template for question answering
+        Standard question-answering prompt instructing the model to answer using only context facts.
         """
         return f"""Answer the following question based on the context provided:
 
@@ -56,7 +61,8 @@ Answer:"""
     @staticmethod
     def reasoning(problem: str) -> str:
         """
-        Prompt template for complex reasoning tasks
+        Forces the model to think step-by-step (Chain-of-Thought reasoning).
+        This improves accuracy for math, logic, or programming questions.
         """
         return f"""Solve the following problem step by step:
 
@@ -67,7 +73,7 @@ Answer:"""
     @staticmethod
     def chat_summary(user_message: str, conversation_history: str = "") -> str:
         """
-        Prompt template for chat-based summarization with conversation context
+        Creates a prompt for generating general conversational responses while preserving thread context.
         """
         history_section = f"\nConversation History:\n{conversation_history}\n" if conversation_history else ""
 
@@ -83,6 +89,10 @@ Answer:"""
         retrieved_documents: str,
         conversation_history: str = "",
     ) -> str:
+        """
+        Prompts the model to answer queries based strictly on retrieved Elasticsearch documents (RAG grounding).
+        Limits hallucinations by forcing the model to state if facts are missing.
+        """
         history_section = (
             f"\nConversation History:\n{conversation_history}\n"
             if conversation_history
@@ -107,10 +117,10 @@ Instructions:
 - If the documents do not contain enough information, say that clearly.
 
 Final Answer:"""
-            
+             
     @staticmethod
     def get_all_templates() -> Dict[str, str]:
-      
+        """Returns description mappings for all templates in our repository."""
         return {
             "summarization": "Summarize text concisely with optional context",
             "code_generation": "Generate code in specified programming language",
@@ -123,15 +133,8 @@ Final Answer:"""
     @staticmethod
     def custom_prompt(template: str, **kwargs) -> str:
         """
-        Create a custom prompt from a template string with variable substitution
+        Create a custom prompt from a template string with variable substitution.
         
-        Args:
-            template: Template string with {variable} placeholders
-            **kwargs: Variables to substitute in the template
-            
-        Returns:
-            Formatted prompt string
-            
         Example:
             >>> template = "Translate {text} to {language}"
             >>> LLMPrompts.custom_prompt(template, text="Hello", language="French")
@@ -143,13 +146,8 @@ Final Answer:"""
     @staticmethod
     def routing_decision(user_message: str) -> str:
         """
-        Prompt template for LLM-based routing decisions
-        
-        Args:
-            user_message: The user's message to analyze for routing
-            
-        Returns:
-            Formatted prompt string for routing decision
+        Prompts the supervisor agent to perform classification on a user message,
+        routing it to 'greeting', 'search', or 'parallel' paths.
         """
         return f"""Analyze this user message and determine the best routing:
 

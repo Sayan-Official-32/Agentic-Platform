@@ -1,3 +1,10 @@
+# workflows/chat_workflow.py
+# This module implements the ChatWorkflow class.
+# The Workflow engine acts as the master conductor.
+# It coordinates the incoming HTTP request, fetches chat history from Redis, checks the cache,
+# calls the Supervisor to select a path, runs the selected agents, processes grounding if needed,
+# updates the chat history database, and caches the final answer.
+
 import asyncio
 import logging
 import uuid
@@ -14,6 +21,7 @@ from app.services.llm_service import LLMService
 from app.services.search_service import SearchService
 from app.state import GraphState
 
+# Configure optional Langfuse tracing for this workflow
 if settings.langfuse_enabled:
     try:
         from langfuse import observe
@@ -33,20 +41,33 @@ logger = logging.getLogger(__name__)
 
 class ChatWorkflow:
     def __init__(self) -> None:
+        """
+        Initializes and links all dependencies, services, and agent workers.
+        """
+        # Memory service stores actual chat histories (session memory)
         self.memory_service = RedisMemoryService(settings.redis_url, settings.redis_ttl_seconds)
+        # Cache service caches question -> answer pairs to save LLM costs and respond instantly
         self.cache_service = RedisMemoryService(settings.redis_url, settings.redis_ttl_seconds)
         self.search_service = SearchService()
         self.llm_service = LLMService()
-        self.supervisor = SupervisorAgent(llm_service=self.llm_service,use_llm_routing=True)
+        self.supervisor = SupervisorAgent(llm_service=self.llm_service, use_llm_routing=True)
         self.summary_agent = SummaryAgent(self.llm_service)
         self.search_agent = SearchAgent(self.search_service)
         
     @observe(name="chat_workflow")
     async def run(self, request: ChatRequest) -> ChatResponse:
+        """
+        Runs the conversational multi-agent logic cycle.
+        """
+        # 1. Establish conversation UUID
         conversation_id = request.conversation_id or str(uuid.uuid4())
+        # Set the logger's thread-local context variables for request tracking
         set_log_context(thread_id=conversation_id, agent_type="workflow")
+        
+        # 2. Check if this exact question has a cached response in Redis
         cache_key = f"chat:{conversation_id}:{request.message.strip().lower()}"
         cached_answer = self.cache_service.get_value(cache_key)
+        # Fetch previous conversation history list from Redis memory
         stored_context = self.memory_service.get_messages(conversation_id)
         
         logger.info(
@@ -58,6 +79,7 @@ class ChatWorkflow:
             },
         )
 
+        # 3. Cache Hit Path: If the answer is cached, bypass agent runs and return immediately
         if cached_answer:
             logger.info("Cache hit for chat response.", extra={"conversation_id": conversation_id})
             return ChatResponse(
@@ -76,9 +98,13 @@ class ChatWorkflow:
                 context_messages=len(stored_context),
             )
             
+        # 4. Compile the full conversation history. Use incoming request history if supplied;
+        # otherwise pull from the Redis stored_context.
         conversation_context = [message.model_dump() for message in request.history] or stored_context
+        # Append the new user message to Redis memory database
         self.memory_service.append_message(conversation_id, "user", request.message)
         
+        # 5. Initialize the GraphState object carrying the workflow data
         state = GraphState(
             conversation_id=conversation_id,
             user_message=request.message,
@@ -86,6 +112,7 @@ class ChatWorkflow:
             conversation_context=conversation_context,
         )
         
+        # 6. Ask the Supervisor to select the routing path based on the user's message
         state.route = await self.supervisor.decide_route(request.message)
         update_log_context(route=state.route)
         
@@ -100,6 +127,8 @@ class ChatWorkflow:
         
         agent_results: list[AgentResult] = []
 
+        # 7. Execute the route branches
+        # --- Greeting Route ---
         if state.route == "greeting":
             logger.info("Handling greeting route.")
             greeting_reply = (
@@ -115,6 +144,7 @@ class ChatWorkflow:
                     metadata={"route": "greeting"},
                 )
             )
+        # --- Summary Route (LLM only) ---
         elif state.route == "summary":
             logger.info("Handling summary route.")
             try:
@@ -135,12 +165,16 @@ class ChatWorkflow:
                         metadata={"fallback": True, "reason": "llm_unavailable"},
                     )
                 )
+        # --- Search Route (Elasticsearch only) ---
         elif state.route == "search":
             logger.info("Handling search route.")
             agent_results.append(await self.search_agent.run(state))
             state.final_answer = state.search_output
+        # --- Parallel / RAG Route (Search + Summary + Grounded Answer compilation) ---
         else:
             logger.info("Handling parallel route.")
+            
+            # A. Execute the Search Agent branch
             try:
                 search_agent_result = await self.search_agent.run(state)
                 agent_results.append(search_agent_result)
@@ -154,6 +188,7 @@ class ChatWorkflow:
                 state.search_output = search_fallback.output
                 agent_results.append(search_fallback)
 
+            # B. Execute the Summary Agent branch
             try:
                 summary_agent_result = await self.summary_agent.run(state)
                 agent_results.append(summary_agent_result)
@@ -170,11 +205,16 @@ class ChatWorkflow:
                 state.summary_output = summary_fallback.output
                 agent_results.append(summary_fallback)
 
+            # C. Grounded Answer Synthesis
+            # If Elasticsearch hits were successfully found, pass them along with the draft summary
+            # and chat history to the LLM to generate a factual, grounded response.
             if state.search_results:
+                # Format conversation history list as flat text lines
                 conversation_history = "\n".join(
                     f"{message.get('role', 'unknown')}: {message.get('content', '')}"
                     for message in conversation_context
                 )
+                # Compile source files list
                 source_lines = []
                 for item in state.search_results:
                     source_line = f"- {item.title}"
@@ -191,6 +231,7 @@ class ChatWorkflow:
                 )
 
                 try:
+                    # Run RAG Grounding LLM request
                     grounded_answer = await self.llm_service.grounded_answer(
                         question=request.message,
                         retrieved_documents=grounded_context,
@@ -214,6 +255,7 @@ class ChatWorkflow:
                         )
                     )
                 except Exception as exc:
+                    # Fall back to raw summary + top source details if grounding fails
                     logger.exception("Grounded answer generation failed.", exc_info=exc)
                     top_result = state.search_results[0]
                     source_line = f"Source: {top_result.title}" + (
@@ -226,12 +268,13 @@ class ChatWorkflow:
                         f"{source_line}"
                     )
             else:
+                # If no matching search hits were found, default directly to the summary output
                 state.final_answer = state.summary_output
             
+        # 8. Save the final answer to the Redis session history and caches
         self.memory_service.append_message(conversation_id, "assistant", state.final_answer)
         self.cache_service.set_value(cache_key, state.final_answer)
         
-            
         logger.info(
             "Chat workflow completed.",
             extra={
@@ -242,6 +285,7 @@ class ChatWorkflow:
             },
         )
         
+        # 9. Format response payload
         response = ChatResponse(
             conversation_id=conversation_id,
             route=state.route,
@@ -251,5 +295,6 @@ class ChatWorkflow:
             cached=False,
             context_messages=len(self.memory_service.get_messages(conversation_id)),
         )
+        # Clear request tracking variables from logger thread context
         clear_log_context()
         return response

@@ -1,3 +1,13 @@
+# services/llm_service.py
+# This module implements the LLMService class.
+# It acts as the gateway to our Large Language Models (LLMs).
+# We connect to the HuggingFace Router using an OpenAI-compatible client API,
+# which allows us to route queries dynamically to four different specialized open-source models:
+# 1. DeepSeek-V4-Pro (for complex reasoning, thinking, and summarization)
+# 2. Qwen2.5-Coder (for generating programming code)
+# 3. Llama-3.2-3B (for ultra-fast Q&A and greeting routes)
+# 4. Llama-3.1-8B (general purpose fallback and standard Q&A)
+
 import logging
 from typing import Dict, List, Optional
 from enum import Enum
@@ -5,6 +15,9 @@ from openai import OpenAI
 from app.prompts import LLMPrompts
 from app.config.settings import settings
 
+# If Langfuse tracing is enabled in settings, import the 'observe' decorator to auto-log latency/tokens.
+# Otherwise, create a mock observe decorator that does nothing (NOP decorator),
+# which prevents import errors and code crashes when Langfuse is disabled.
 if settings.langfuse_enabled:
     try:
         from langfuse import observe
@@ -22,7 +35,9 @@ else:
 logger  = logging.getLogger(__name__)
 
 class ModelCapability(Enum):
-    """Define unique capabilities for different models"""
+    """
+    Unique capabilities used to route tasks to different LLMs.
+    """
     SUMMARIZATION = "summarization"
     CODE_GENERATION = "code_generation"
     REASONING = "reasoning"
@@ -30,7 +45,9 @@ class ModelCapability(Enum):
     
     
 class ModelConfig:
-    """Configuration for top 4 HuggingFace Router models"""
+    """
+    Configuration parameters for the four specialized HuggingFace Router models.
+    """
     
     MODELS = {
         "deepseek-ai/DeepSeek-V4-Pro":{
@@ -44,7 +61,7 @@ class ModelConfig:
         "Qwen/Qwen2.5-Coder-7B-Instruct": {
             "capabilities": [ModelCapability.CODE_GENERATION],
             "max_tokens": 8192,
-            "temperature": 0.2,
+            "temperature": 0.2, # Low temperature ensures code is deterministic and syntactically correct
             "best_for": "Code generation and programming tasks",
             "size": "8B"
         },
@@ -68,8 +85,8 @@ class ModelConfig:
     
 class LLMService:
     """
-    LLM Service using HuggingFace Router with OpenAI-compatible API
-    Uses 4 specialized models for different tasks
+    LLM Service using HuggingFace Router with OpenAI-compatible API.
+    Selects specialized models dynamically depending on task requirements.
     """
     
     def __init__(self):
@@ -78,13 +95,13 @@ class LLMService:
         self._initialize_client()
         
     def _initialize_client(self):
-        """Initialize OpenAI client with HuggingFace Router"""
-        
+        """Initializes the OpenAI API client configured to hit HuggingFace's API gateway endpoint."""
         if not settings.huggingface_api_key:
             logger.warning("HuggingFace API key not configured")
             return
         
-        # Initialize standard OpenAI client
+        # HuggingFace provides an OpenAI-compatible endpoint.
+        # This allows us to use the official 'OpenAI' SDK, simply swapping out the base_url.
         self.client = OpenAI(
             base_url="https://router.huggingface.co/v1",
             api_key=settings.huggingface_api_key,
@@ -97,8 +114,8 @@ class LLMService:
             
     def get_model_for_capability(self, capability: ModelCapability) -> str:
         """
-        Select the best model for a given capability
-        Returns the model name to use
+        Picks the best model for a requested capability.
+        Allows overriding defaults via custom settings from the .env configuration.
         """
         capability_models = {
             ModelCapability.SUMMARIZATION: settings.model_summarization,
@@ -112,6 +129,7 @@ class LLMService:
             logger.info(f"Using custom model for {capability.value}: {custom_model}")
             return custom_model
         
+        # Fallback default assignments
         default_models = {
             ModelCapability.SUMMARIZATION: "deepseek-ai/DeepSeek-V4-Pro",
             ModelCapability.CODE_GENERATION: "Qwen/Qwen2.5-Coder-7B-Instruct",
@@ -123,34 +141,29 @@ class LLMService:
         logger.info(f"Using default model for {capability.value}: {model}")
         return model
     
-    
     @observe(name="llm_generate")
     async def generate(
         self,
-        prompt:str,
+        prompt: str,
         model: Optional[str] = None,
         max_tokens: int = 2048,
         temperature: float = 0.7,
         capability: Optional[ModelCapability] = None,
         ) -> str:
-        
         """
-        Generate text using HuggingFace Router
+        Sends a request to the LLM and returns the generated string output.
         
         Args:
-            prompt: The input prompt
-            model: Specific model to use (optional)
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-            capability: Model capability to use for automatic model selection
-            
-        Returns:
-            Generated text
+            prompt: Text prompt/context sent to the model.
+            model: Optional name of specific model. If omitted, uses capability to resolve it.
+            max_tokens: Limit on response tokens.
+            temperature: Creativity control (0.0 is deterministic, 1.0 is highly creative).
+            capability: Triggers model routing based on task scope.
         """
-        
         if not self.client:
             raise RuntimeError("HuggingFace Router client not initialized. Check HF_TOKEN.")
         
+        # 1. Resolve which model string to use
         if not model and capability:
             model = self.get_model_for_capability(capability)
         elif not model:
@@ -162,6 +175,7 @@ class LLMService:
         )
         
         try:
+          # 2. Call the chat completion endpoint
           completion = self.client.chat.completions.create(
                 model=model,
                 messages=[
@@ -174,6 +188,7 @@ class LLMService:
                 temperature=temperature,
           )
           
+          # 3. Retrieve response text content
           response = completion.choices[0].message.content or ""
           logger.info(f"Generated {len(response)} characters")
             
@@ -182,8 +197,8 @@ class LLMService:
             logger.error(f"Error generating with HuggingFace Router: {e}")
             raise
         
-    async def summarize(self,text:str,context:str="") -> str:
-        """Summarize text using DeepSeek-V4-Pro (best for reasoning/summarization)"""
+    async def summarize(self, text: str, context: str = "") -> str:
+        """Summarizes text using DeepSeek-V4-Pro (highly capable reasoning model)."""
         prompt = LLMPrompts.summarization(text=text, context=context)
         
         return await self.generate(
@@ -194,7 +209,7 @@ class LLMService:
         )
         
     async def generate_code(self, description: str, language: str = "python") -> str:
-        """Generate code using Qwen2.5-Coder (best for code generation)"""
+        """Generates code using Qwen2.5-Coder (specifically trained on codebases)."""
         prompt = LLMPrompts.code_generation(description=description, language=language)
         
         return await self.generate(
@@ -205,7 +220,7 @@ class LLMService:
         )
 
     async def answer_question(self, question: str, context: str = "") -> str:
-        """Answer a question using Llama-3.2-3B (fast Q&A)"""
+        """Fast Q&A queries using Llama-3.2-3B (compact and speedy)."""
         prompt = LLMPrompts.question_answering(question=question, context=context)
         
         return await self.generate(
@@ -221,7 +236,10 @@ class LLMService:
         retrieved_documents: str,
         conversation_history: str = "",
     ) -> str:
-        """Answer a question from retrieved documents with conversation context."""
+        """
+        RAG Grounding: Answers user queries using retrieved document snippets as context.
+        Instructs the model to limit answers strictly to the provided document facts.
+        """
         prompt = LLMPrompts.grounded_answer(
             user_message=question,
             retrieved_documents=retrieved_documents,
@@ -232,11 +250,11 @@ class LLMService:
             prompt=prompt,
             capability=ModelCapability.QUESTION_ANSWERING,
             max_tokens=1024,
-            temperature=0.2,
+            temperature=0.2, # Low temperature reduces hallucination risks
         )
 
     async def reason(self, problem: str) -> str:
-        """Solve a complex reasoning problem using DeepSeek-V4-Pro"""
+        """Performs complex step-by-step reasoning on logic problems using DeepSeek-V4-Pro."""
         prompt = LLMPrompts.reasoning(problem=problem)
         
         return await self.generate(
@@ -247,7 +265,7 @@ class LLMService:
         )
 
     def list_available_models(self) -> List[Dict]:
-        """List all 4 available models with their capabilities"""
+        """Utility listing available models, their sizes, and what they are optimized for."""
         return [
             {
                 "name": name,

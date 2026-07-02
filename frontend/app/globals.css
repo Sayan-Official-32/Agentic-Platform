@@ -884,6 +884,21 @@ body.light-mode .status-card:hover {
   box-shadow: 0 0 8px var(--color-warning);
 }
 
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.status-row-compact {
+  gap: 6px;
+}
+
+.status-row .status-label {
+  flex: 1;
+}
+
 .status-label {
   color: var(--text-secondary);
   font-size: 13.5px;

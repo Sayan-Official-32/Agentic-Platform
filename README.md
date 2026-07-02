@@ -41,9 +41,9 @@ The **Agentic AI Chat System** is an enterprise-ready Retrieval-Augmented Genera
 
 ## 🎨 3. Demo
 
-| Interactive Console Dashboard | Analytics & Logs Panel |
+| Interactive Console Dashboard |
 | :---: | :---: |
-| ![Chat Interface](gitimg/1.png) | ![System Logs](gitimg/2.png) |
+| ![Chat Interface](gitimg/1.png) |
 
 ---
 

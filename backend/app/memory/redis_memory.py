@@ -129,4 +129,18 @@ class RedisMemoryService:
     @property
     def using_redis(self) -> bool:
         """Helper boolean property indicating whether Redis client connection is active."""
+        if self._client is None:
+            try:
+                import importlib
+                redis_module = importlib.import_module("redis")
+                client = redis_module.from_url(self.url, decode_responses=True)
+                client.ping()
+                self._client = client
+            except Exception:
+                self._client = None
+        else:
+            try:
+                self._client.ping()
+            except Exception:
+                self._client = None
         return self._client is not None

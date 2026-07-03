@@ -90,7 +90,7 @@ Answer:"""
         conversation_history: str = "",
     ) -> str:
         """
-        Prompts the model to answer queries based strictly on retrieved Elasticsearch documents (RAG grounding).
+        Prompts the model to answer queries based strictly on retrieved Supabase documents (RAG grounding).
         Limits hallucinations by forcing the model to state if facts are missing.
         """
         history_section = (

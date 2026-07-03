@@ -2,7 +2,7 @@
 # This module implements the SearchAgent.
 # In a multi-agent system, an "Agent" is a specialized component focused on a single responsibility.
 # The SearchAgent takes the user query from the shared GraphState, executes a query against
-# Elasticsearch via the SearchService, formats the matching document details into a readable list,
+# Supabase via the SearchService, formats the matching document details into a readable list,
 # updates the GraphState, and returns an AgentResult object.
 
 import logging
@@ -32,7 +32,7 @@ logger  = logging.getLogger(__name__)
 class SearchAgent:
     def __init__(self, search_service: SearchService):
         """
-        Injects the Elasticsearch SearchService instance.
+        Injects the Supabase SearchService instance.
         """
         self.search_service = search_service
         
@@ -40,7 +40,7 @@ class SearchAgent:
     async def run(self, state: GraphState) -> AgentResult:
         """
         Executes the search task.
-        Reads state.user_message, queries Elasticsearch, sets state.search_results/search_output,
+        Reads state.user_message, queries Supabase, sets state.search_results/search_output,
         and returns the AgentResult.
         """
         logger.info(
@@ -48,8 +48,12 @@ class SearchAgent:
             extra={"route": state.route, "message_preview": state.user_message[:120]},
         )
         
-        # 1. Query pgvector using the search service
-        results = await self.search_service.search(state.user_message, user_id=state.user_id)
+        # 1. Query pgvector using the search service (filtering by file_ids if specified)
+        results = await self.search_service.search(
+            state.user_message,
+            user_id=state.user_id,
+            file_ids=getattr(state, "file_ids", None)
+        )
 
         # 2. Save raw hits list into the shared state object
         state.search_results = results
@@ -83,7 +87,7 @@ class SearchAgent:
             output=output,
             metadata={
                 "results_count": len(results),
-                "index_name" : self.search_service.index_name
+                "table_name" : self.search_service.index_name
             }
         )
  

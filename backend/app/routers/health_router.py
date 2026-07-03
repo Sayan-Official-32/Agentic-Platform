@@ -2,7 +2,7 @@
 # This module implements the /health endpoint.
 # Health check endpoints are used by monitoring systems (like Kubernetes, AWS target groups,
 # or status pingers) to check if the server is up and verify connections to external services
-# like Redis and Elasticsearch are healthy.
+# like Redis and Supabase are healthy.
 
 from fastapi import APIRouter
 
@@ -28,5 +28,5 @@ def health() -> dict[str, object]:
         "environment": settings.app_env,
         "llm_provider": settings.llm_provider,
         "redis_connected": memory_service.using_redis,           # True if connected to Redis
-        "elasticsearch_connected": search_service.available,     # True if connected to Elasticsearch
+        "supabase_connected": search_service.available,     # True if connected to Supabase
     }

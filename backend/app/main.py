@@ -90,7 +90,7 @@ logger.info(
         "app_name": settings.app_name,
         "api_prefix": settings.api_prefix,
         "llm_provider": settings.llm_provider,
-        "elastic_index": settings.elasticsearch_index,
+        "supabase_bucket": settings.supabase_storage_bucket,
     },
 )
 # Trigger reload

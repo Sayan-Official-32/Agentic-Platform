@@ -27,14 +27,15 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     conversation_id: Optional[str] = None
     history: List[ChatMessage] = Field(default_factory=list)
+    file_ids: Optional[List[str]] = None
     
 class SearchResult(BaseModel):
     """
-    Structured document snippet hit retrieved from Elasticsearch during a search operation.
+    Structured document snippet hit retrieved from Supabase during a search operation.
     'title': Document title/section.
     'snippet': Matching text fragment.
-    'score': Relevance score assigned by Elasticsearch's search engine.
-    'source': Source type (e.g. 'elasticsearch').
+    'score': Relevance score assigned by Supabase vector search engine.
+    'source': Source type (e.g. 'pgvector').
     'page_number': Source page number if parsed from a PDF.
     'file_name': Source file name.
     """

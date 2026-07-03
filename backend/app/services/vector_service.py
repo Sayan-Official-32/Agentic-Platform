@@ -76,23 +76,28 @@ class VectorService:
         user_id: UUID,
         query_embedding: List[float],
         top_k: int = 10,
-        threshold: float = 0.0
+        threshold: float = 0.0,
+        file_ids: Optional[List[str]] = None
     ) -> List[ChunkResult]:
         """
         Queries similarity across pgvector using the match_document_chunks database function.
         Isolates searches to the calling user's files only.
         """
-        logger.info("Executing pgvector similarity search...", extra={"user_id": str(user_id), "top_k": top_k})
+        logger.info(f"Executing pgvector similarity search... file_filter={file_ids}", extra={"user_id": str(user_id), "top_k": top_k})
         
         try:
+            params = {
+                "query_embedding": query_embedding,
+                "match_threshold": threshold,
+                "match_count": top_k,
+                "filter_user_id": str(user_id)
+            }
+            if file_ids is not None:
+                params["filter_file_ids"] = file_ids
+
             res = self.supabase.rpc(
                 "match_document_chunks",
-                {
-                    "query_embedding": query_embedding,
-                    "match_threshold": threshold,
-                    "match_count": top_k,
-                    "filter_user_id": str(user_id)
-                }
+                params
             ).execute()
             
             chunks = []

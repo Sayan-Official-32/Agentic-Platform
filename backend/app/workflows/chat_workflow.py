@@ -19,6 +19,7 @@ from app.memory.redis_memory import RedisMemoryService
 from app.models.chat_models import AgentResult, ChatRequest, ChatResponse
 from app.services.llm_service import LLMService
 from app.services.search_service import SearchService
+from app.services.conversation_service import ConversationService
 from app.state import GraphState
 
 # Configure optional Langfuse tracing for this workflow
@@ -53,6 +54,7 @@ class ChatWorkflow:
         self.supervisor = SupervisorAgent(llm_service=self.llm_service, use_llm_routing=True)
         self.summary_agent = SummaryAgent(self.llm_service)
         self.search_agent = SearchAgent(self.search_service)
+        self.conversation_service = ConversationService()
         
     @observe(name="chat_workflow")
     async def run(self, request: ChatRequest, user_id: uuid.UUID) -> ChatResponse:
@@ -60,9 +62,21 @@ class ChatWorkflow:
         Runs the conversational multi-agent logic cycle.
         """
         # 1. Establish conversation UUID
+        is_new_conversation = request.conversation_id is None
         conversation_id = request.conversation_id or str(uuid.uuid4())
         # Set the logger's thread-local context variables for request tracking
         set_log_context(thread_id=conversation_id, agent_type="workflow")
+
+        # 1b. If this is a brand-new conversation, create a session row in Supabase
+        session_row = None
+        if is_new_conversation:
+            session_row = self.conversation_service.create_conversation(
+                user_id=str(user_id),
+                conversation_id=conversation_id,
+                title=request.message[:60],
+            )
+        else:
+            session_row = self.conversation_service.find_session_by_conversation_id(conversation_id)
         
         # 2. Check if this exact question has a cached response in Redis (user-scoped)
         cache_key = f"chat:{user_id}:{conversation_id}:{request.message.strip().lower()}"
@@ -111,7 +125,8 @@ class ChatWorkflow:
             user_message=request.message,
             history=request.history,
             conversation_context=conversation_context,
-            user_id=user_id
+            user_id=user_id,
+            file_ids=request.file_ids
         )
         
         # 6. Ask the Supervisor to select the routing path based on the user's message
@@ -167,7 +182,7 @@ class ChatWorkflow:
                         metadata={"fallback": True, "reason": "llm_unavailable"},
                     )
                 )
-        # --- Search Route (Elasticsearch only) ---
+        # --- Search Route (Supabase only) ---
         elif state.route == "search":
             logger.info("Handling search route.")
             agent_results.append(await self.search_agent.run(state))
@@ -208,7 +223,7 @@ class ChatWorkflow:
                 agent_results.append(summary_fallback)
 
             # C. Grounded Answer Synthesis
-            # If Elasticsearch hits were successfully found, pass them along with the draft summary
+            # If Supabase/pgvector hits were successfully found, pass them along with the draft summary
             # and chat history to the LLM to generate a factual, grounded response.
             if state.search_results:
                 # Format conversation history list as flat text lines
@@ -276,6 +291,12 @@ class ChatWorkflow:
         # 8. Save the final answer to the Redis session history and caches
         self.memory_service.append_message(conversation_id, "assistant", state.final_answer)
         self.cache_service.set_value(cache_key, state.final_answer)
+
+        # 8b. Persist both messages to Supabase for permanent history
+        if session_row:
+            session_id = session_row["id"]
+            self.conversation_service.save_message(session_id, "user", request.message)
+            self.conversation_service.save_message(session_id, "assistant", state.final_answer)
         
         logger.info(
             "Chat workflow completed.",

@@ -59,13 +59,7 @@ class Settings(BaseModel):
     # redis_ttl_seconds determines how long (in seconds) the conversation history is kept in Redis before it expires (3600s = 1 hour).
     redis_ttl_seconds: int = int(os.getenv("REDIS_TTL_SECONDS", "3600"))
     
-    # --- Elasticsearch Configuration (Retrieval Augmented Generation / RAG - Deprecated/Compatibility) ---
-    # Elasticsearch indexes document chunks from uploaded PDFs/CSVs for text/vector search.
-    elasticsearch_url: str = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
-    elasticsearch_index: str = os.getenv("ELASTICSEARCH_INDEX", "starter_documents")
-    elasticsearch_api_key: str = os.getenv("ELASTICSEARCH_API_KEY", "")
-    elasticsearch_user: str = os.getenv("ELASTICSEARCH_USER", "elastic")
-    elasticsearch_password: str = os.getenv("ELASTICSEARCH_PASSWORD", "")
+    # --- Supabase table setting compatibility ---
 
     # --- Supabase Configuration ---
     supabase_url: str = os.getenv("SUPABASE_URL", "")

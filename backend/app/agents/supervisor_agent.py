@@ -5,7 +5,7 @@
 # - "greeting" -> skip RAG/LLM search, return generic hello.
 # - "search" -> user wants to see raw document snippets only.
 # - "summary" -> user wants general summary.
-# - "parallel" -> user wants grounded answers; search Elasticsearch first, then feed hits into LLM.
+# - "parallel" -> user wants grounded answers; search Supabase pgvector first, then feed hits into LLM.
 # It can perform routing using either LLM text classification (accurate) or keyword-based parsing (fast fallback).
 
 import logging

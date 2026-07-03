@@ -27,3 +27,4 @@ class GraphState:
     reranked_chunks: List[ChunkResult] = field(default_factory=list)  # Reranked vector search results
     final_answer: str = ""                    # The final combined/grounded response returned to the user
     user_id: Optional[UUID] = None            # UUID of the authenticated user
+    file_ids: Optional[List[str]] = None      # List of selected file UUIDs to query against

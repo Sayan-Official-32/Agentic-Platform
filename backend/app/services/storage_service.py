@@ -23,15 +23,26 @@ class StorageService:
         storage_path = f"{user_id}/{file_id}/{filename}"
         logger.info(
             f"Uploading file bytes to Supabase Storage: {storage_path}",
-            extra={"user_id": user_id, "file_id": file_id, "filename": filename}
+            extra={"user_id": user_id, "file_id": file_id, "file_name": filename}
         )
         
         try:
-            # Upload file. Overwrite existing if any conflict.
+            import gzip
+            compressed_bytes = gzip.compress(file_bytes)
+            logger.info(
+                f"Compressed storage file: original_size={len(file_bytes)} -> compressed_size={len(compressed_bytes)}",
+                extra={"user_id": user_id, "file_id": file_id, "file_name": filename}
+            )
+
+            # Upload compressed file. Overwrite existing if any conflict.
             self.supabase.storage.from_(self.bucket_name).upload(
                 path=storage_path,
-                file=file_bytes,
-                file_options={"cache-control": "3600", "upsert": "true"}
+                file=compressed_bytes,
+                file_options={
+                    "cache-control": "3600",
+                    "upsert": "true",
+                    "content-encoding": "gzip"
+                }
             )
             return storage_path
         except Exception as exc:

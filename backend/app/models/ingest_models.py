@@ -10,8 +10,8 @@ class IngestResponse(BaseModel):
     """
     Response returned when successfully indexing snippets from a raw source file.
     """
-    indexed_count: int      # Number of chunks successfully pushed into Elasticsearch
-    index_name: str         # The name of the Elasticsearch index where they were saved
+    indexed_count: int      # Number of chunks successfully pushed into Supabase
+    index_name: str         # The name of the Supabase Storage bucket where they were saved
     source_file: str        # Filename/path that was processed
 
 class FileIngestResponse(BaseModel):
@@ -19,7 +19,7 @@ class FileIngestResponse(BaseModel):
     Detailed response returned after processing a single file upload/ingest.
     """
     indexed_count: int      # Number of search documents indexed
-    index_name: str         # Elasticsearch target index name
+    index_name: str         # Supabase target bucket name
     file_name: str          # Name of the processed file
     file_type: str          # Detected extension type ('pdf' or 'csv')
     documents_processed: int # Total raw paragraphs or rows extracted

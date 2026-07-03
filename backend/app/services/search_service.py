@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 class SearchService:
     def __init__(self) -> None:
-        self.index_name = settings.elasticsearch_index
+        self.index_name = "document_chunks"
         self.vector_service = VectorService()
         self.embedding_service = EmbeddingService()
         self.reranker_service = RerankerService()
 
-    async def search(self, query: str, user_id: Optional[UUID] = None) -> List[SearchResult]:
+    async def search(self, query: str, user_id: Optional[UUID] = None, file_ids: Optional[List[str]] = None) -> List[SearchResult]:
         """
         Executes a vector similarity search scoped to the user ID, reranks results, and maps to SearchResult.
         """
@@ -35,7 +35,8 @@ class SearchService:
             chunks = self.vector_service.search(
                 user_id=user_id,
                 query_embedding=query_vector,
-                top_k=settings.vector_top_k
+                top_k=settings.vector_top_k,
+                file_ids=file_ids
             )
             
             # 3. Rerank retrieved candidate chunks

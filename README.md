@@ -28,14 +28,14 @@ The **Agentic AI Chat System** is an enterprise-ready Retrieval-Augmented Genera
 
 ### 1. Core AI & Agent Features
 * **Supervisor Agent**: Employs hybrid routing—fast keyword parsing or precise LLM semantic analysis—to orchestrate tasks.
-* **Parallel RAG Execution**: Runs Elasticsearch index searches and context summarization threads concurrently to lower response times.
+* **Parallel RAG Execution**: Runs Supabase database searches and context summarization threads concurrently to lower response times.
 * **Grounded Synthesis**: Guarantees source-attributed answers with exact page numbers and document names.
 
 ### 2. Security & Performance
 * **JWT Identity Protection**: Secures routes with stateless token verification.
 * **Token-Bucket Rate Limiting**: Prevents API abuse (default 60 req/minute).
 * **Caching Layer**: Stores query results in Redis Stack to skip redundant LLM invocations.
-* **Database Reconnection Resilience**: Resilient service clients that auto-reconnect to Redis and Elasticsearch if the databases restart.
+* **Database Reconnection Resilience**: Resilient service clients that auto-reconnect to Redis and Supabase if the databases restart.
 
 ---
 
@@ -72,7 +72,7 @@ graph TD
     end
 
     subgraph Databases & Providers
-        ESClient -->|Search Chunks| ES[(Elasticsearch 9.0)]
+        ESClient -->|Search Chunks| ES[(Supabase)]
         LLMClient -->|API Completions| LLM[HF Router / Local Ollama]
         BE -->|Cache & Session| Redis[(Redis Stack)]
     end
@@ -87,7 +87,7 @@ graph TD
 | **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS | Responsive dashboard console & client session handling. |
 | **Backend** | FastAPI, Pydantic, Uvicorn | High-performance async ASGI gateway and router. |
 | **Storage & Cache** | Redis Stack, Redis Insight | Message thread history, API caching, and GUI monitoring. |
-| **Search Engine** | Elasticsearch 9.0 | High-fidelity vector search and text index store. |
+| **Search Engine** | Supabase | High-fidelity vector search and text index store. |
 | **AI Framework** | Hugging Face Router / Ollama API | Multi-model OpenAI spec inference wrapper. |
 | **Observability** | Langfuse (Optional) | End-to-end LLM call tracing, evaluations, and latency logs. |
 
@@ -96,13 +96,13 @@ graph TD
 ## 💻 6. Installation & Local Setup
 
 ### Step 1: Start Databases (Docker)
-In your terminal, navigate to the root directory and start Redis and Elasticsearch:
+In your terminal, navigate to the root directory and start Redis and Supabase:
 ```bash
 docker compose up -d
 # (Or "podman-compose up -d" if using Podman)
 ```
 Verify the services are active:
-* **Elasticsearch**: [http://localhost:9200](http://localhost:9200)
+* **Supabase**: [http://localhost:9200](http://localhost:9200)
 * **Redis Dashboard**: [http://localhost:8001](http://localhost:8001)
 
 ### Step 2: Configure & Run Backend (FastAPI)
@@ -171,7 +171,7 @@ Verify the services are active:
 | `MODEL_SUMMARIZATION` | `deepseek-ai/DeepSeek-V4-Pro` | Model used for text summarization. |
 | `MODEL_QUESTION_ANSWERING` | `Qwen/Qwen2.5-7B-Instruct` | Model used for grounded responses. |
 | `REDIS_URL` | `redis://:redis_password@localhost:6379/0` | Connection URI for the Redis cache. |
-| `ELASTICSEARCH_URL` | `http://localhost:9200` | Endpoint for the Elasticsearch index server. |
+| `SUPABASE_URL` | `http://localhost:9200` | Endpoint for the Supabase database server. |
 
 ---
 
@@ -197,7 +197,7 @@ Verify the services are active:
 ## 🛠️ 10. Troubleshooting (FAQ)
 
 ### Q: Why is the `elastic` indicator offline in my dashboard?
-1. The Elasticsearch docker container might not be fully started yet (takes $\approx30$ seconds to boot).
+1. The Supabase docker container might not be fully started yet (takes $\approx30$ seconds to boot).
 2. If it is running, verify that `ELASTICSEARCH_USER` and `ELASTICSEARCH_PASSWORD` are completely empty in your `.env` if local security is disabled.
 
 ### Q: I get a `403 Forbidden` error when sending messages.
@@ -209,4 +209,4 @@ Your Hugging Face Token lacks permissions. Generate a new token at [huggingface.
 
 This project is open-source and licensed under the [MIT License](LICENSE). 
 
-Special thanks to the developers of **FastAPI**, **LangChain**, **Next.js**, **Hugging Face**, **Redis**, and **Elasticsearch** for providing the core building blocks of this agentic chat ecosystem.
+Special thanks to the developers of **FastAPI**, **LangChain**, **Next.js**, **Hugging Face**, **Redis**, and **Supabase** for providing the core building blocks of this agentic chat ecosystem.

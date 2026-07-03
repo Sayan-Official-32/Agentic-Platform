@@ -29,9 +29,9 @@ Traditional enterprise chatbots often struggle with:
 
 ### Technical Highlights
 * **Dynamic Agent Routing**: Uses a **Supervisor Agent** capable of shifting dynamically between fast keyword parsing and precise LLM semantic routing.
-* **Multi-Agent Coordination**: Splits RAG tasks between parallelized **Search Agents** (Elasticsearch-driven) and **Summary Agents** (LLM-driven).
+* **Multi-Agent Coordination**: Splits RAG tasks between parallelized **Search Agents** (Supabase-driven) and **Summary Agents** (LLM-driven).
 * **OpenAI-Compatible HuggingFace Router & Ollama**: Compatible with local deployments (Ollama) and high-performance serverless endpoints (Hugging Face Router).
-* **Production-Grade Resilience**: Built with dynamic failover reconnections for Elasticsearch/Redis, secure JWT auth, and Docker/Podman compose isolation.
+* **Production-Grade Resilience**: Built with dynamic failover reconnections for Supabase/Redis, secure JWT auth, and Docker/Podman compose isolation.
 
 ### Success Metrics
 | Metric | Target Goal | Current State |
@@ -64,7 +64,7 @@ graph TD
         SA -->|Query Lookup| SE[Search Service]
         SU -->|Context Synthesis| LLM[LLM Service]
         
-        SE -->|Semantic/BM25 Hits| ES[(Elasticsearch)]
+        SE -->|Semantic/BM25 Hits| ES[(Supabase)]
         LLM -->|Completions| HF[Hugging Face Router / Ollama]
         
         PA -->|Aggregate & Ground| GA[Grounded Answer Generator]
@@ -151,7 +151,7 @@ agentic-ai/
 │       │   ├── __init__.py
 │       │   ├── auth_service.py  # User identity verification logic
 │       │   ├── llm_service.py   # OpenAI API / HF Router / Ollama wrapper
-│       │   ├── search_service.py# Elasticsearch indexing, searches, and retry logic
+│       │   ├── search_service.py# Supabase indexing, searches, and retry logic
 │       │   └── token_service.py # JWT Token signing and expiration logic
 │       ├── memory/              # Memory & Cache Storage Layer
 │       │   ├── __init__.py
@@ -185,7 +185,7 @@ The system uses a highly resilient, modern open-source technology stack carefull
 | :--- | :--- | :--- | :--- |
 | **Frontend** | **Next.js 15 & React 19** | Standardized React SSR framework. Provides file-system routing, optimal bundle sizes, and quick TypeScript integrations. | Vite (Lack of native SSR structure), Nuxt.js (Non-React syntax). |
 | **Backend** | **FastAPI** | Extremely fast ASGI framework powered by Starlette and Pydantic. Supports async/await out-of-the-box. | Express.js (Lacks Pydantic validation), Django (High overhead). |
-| **Databases** | **Elasticsearch 9.0** | Industry-standard vector search capability, fast inverted-index searching, and scaling features. | PostgreSQL with pgvector (Slower vector lookups on large tables). |
+| **Databases** | **Supabase 9.0** | Industry-standard vector search capability, fast inverted-index searching, and scaling features. | PostgreSQL with pgvector (Slower vector lookups on large tables). |
 | **Caching/KV** | **Redis Stack** | In-memory key-value engine with native list datatypes for message sequences and quick lookup times. | Memcached (No native list data structures). |
 | **AI/LLM** | **HF Router / Ollama** | Open OpenAI spec integration. Allows easy swaps between Hugging Face serverless GPUs and local Ollama nodes. | OpenAI API (Creates vendor lock-in). |
 
@@ -204,7 +204,7 @@ stateDiagram-v2
     state Workspace {
         [*] --> Idle
         Idle --> Ingestion: Upload Document / Ingest Directory
-        Ingestion --> Syncing: Parse Chunk & Upload to Elasticsearch
+        Ingestion --> Syncing: Parse Chunk & Upload to Supabase
         Syncing --> Idle
         
         Idle --> Chatting: Submits Chat Prompt
@@ -237,7 +237,7 @@ sequenceDiagram
     participant FE as Frontend Dashboard
     participant BE as FastAPI Backend
     participant Redis as Redis Cache
-    participant ES as Elasticsearch
+    participant ES as Supabase
     participant LLM as Hugging Face / Ollama
 
     User->>FE: Enter Message & Press Send
@@ -303,7 +303,7 @@ flowchart TD
     Depend -->|Invalid Token| Err[HTTP 401 Unauthorized]
     Depend -->|Valid Token| Service[Service Layer: Ingest/Chat Workflows]
     Service --> Mem[Memory Service: Redis/MemoryStore]
-    Service --> ES[Search Service: Elasticsearch]
+    Service --> ES[Search Service: Supabase]
     Service --> Model[LLM Service: OpenAI Client]
     Model --> Return([Response])
 ```
@@ -329,7 +329,7 @@ flowchart TD
     "environment": "development",
     "llm_provider": "huggingface",
     "redis_connected": true,
-    "elasticsearch_connected": true
+    "supabase_connected": true
   }
   ```
 
@@ -387,15 +387,15 @@ flowchart TD
 
 ## SECTION 9: DATABASE DOCUMENTATION
 
-The system leverages **Redis** for structured key-value cache/memory storage, and **Elasticsearch** for document stores.
+The system leverages **Redis** for structured key-value cache/memory storage, and **Supabase** for document stores.
 
-### Elasticsearch Schema: `starter_documents`
+### Supabase Schema: `starter_documents`
 | Property | Field Type | Search Parameter | Purpose |
 | :--- | :--- | :--- | :--- |
 | `title` | `text` | Match queries (weight $\times 2$) | Document header / identifier |
 | `snippet` | `text` | Match queries | Extracted textual chunk contents |
 | `category` | `keyword` | Filter | Document taxonomy |
-| `source` | `keyword` | Static identifier | Origin source (e.g. `elasticsearch`) |
+| `source` | `keyword` | Static identifier | Origin source (e.g. `supabase`) |
 | `page_number` | `integer` | Attribution metadata | Page location reference |
 | `total_pages` | `integer` | Attribution metadata | Length reference |
 | `file_name` | `keyword` | Attribution metadata | Physical source filename |
@@ -457,11 +457,11 @@ flowchart TD
     subgraph Ingestion Phase
         Doc[PDF / CSV File] --> Loader[file_ingest.py Loaders]
         Loader --> Cleaner[Chunking & Cleaning]
-        Cleaner --> ESIndex[Bulk Ingest to Elasticsearch]
+        Cleaner --> ESIndex[Bulk Ingest to Supabase]
     end
 
     subgraph Query / RAG Phase
-        Query[User Input Query] --> ES[Elasticsearch Query]
+        Query[User Input Query] --> ES[Supabase Query]
         ES -->|Retrieved Chunks| Ground[Grounded Answer Prompt]
         Summary[Summary Agent Output] --> Ground
         Ground --> Generator[grounded_answer completion]
@@ -470,7 +470,7 @@ flowchart TD
 ```
 
 1. **Document Parsing**: Supporting `.csv` and `.pdf` files. PDFs are read line-by-line using `PyPDF2` splitters, generating chunks enriched with source metadata.
-2. **Indexed Search**: Queries matching the prompt are dispatched to Elasticsearch as `multi_match` configurations spanning both matching fields (`title` weighted higher, and `snippet`).
+2. **Indexed Search**: Queries matching the prompt are dispatched to Supabase as `multi_match` configurations spanning both matching fields (`title` weighted higher, and `snippet`).
 3. **Synthesis**: The Grounded Answer Generator takes raw snippets and outputs responses ensuring strict alignment with actual data.
 
 ---
@@ -479,7 +479,7 @@ flowchart TD
 
 | Error Signature | Potential Root Cause | Solution |
 | :--- | :--- | :--- |
-| **`elasticsearch_connected: false`** | Elasticsearch container is stopped, boot timeout, or credentials mismatch in `.env`. | Verify status via `docker ps`. Clear `ELASTICSEARCH_USER` and `ELASTICSEARCH_PASSWORD` in `.env` if security is disabled. |
+| **`supabase_connected: false`** | Supabase container is stopped, boot timeout, or credentials mismatch in `.env`. | Verify status via `docker ps`. Clear `ELASTICSEARCH_USER` and `ELASTICSEARCH_PASSWORD` in `.env` if security is disabled. |
 | **`PermissionDeniedError (403)` on LLM Call** | HuggingFace Token lacks Serverless Inference permissions. | Go to HF settings, edit token permissions to allow serverless inference, update `HUGGINGFACE_API_KEY` in `.env`. |
 | **`ModuleNotFoundError: No module named 'redis'`** | Server ran outside virtual environment. | Activate venv (`.\venv\Scripts\Activate.ps1`) before executing `uvicorn`. |
 | **`unable to get image ... failed to connect to docker API`** | Docker Desktop engine is not running on host machine. | Open Docker Desktop client, wait for indicator to turn green, and retry compose command. |

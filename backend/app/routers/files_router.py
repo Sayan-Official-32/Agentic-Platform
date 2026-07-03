@@ -40,6 +40,8 @@ def list_user_files(current_user: UserResponse = Depends(get_current_user)) -> L
                 status=row["status"],
                 chunk_count=row.get("chunk_count", 0),
                 file_size=row.get("file_size"),
+                suggested_questions=row.get("suggested_questions"),
+                conversation_id=UUID(row["conversation_id"]) if row.get("conversation_id") else None,
                 created_at=row["created_at"]
             ))
         return files
@@ -66,6 +68,8 @@ def get_user_file(file_id: UUID, current_user: UserResponse = Depends(get_curren
             status=row["status"],
             chunk_count=row.get("chunk_count", 0),
             file_size=row.get("file_size"),
+            suggested_questions=row.get("suggested_questions"),
+            conversation_id=UUID(row["conversation_id"]) if row.get("conversation_id") else None,
             created_at=row["created_at"]
         )
     except HTTPException:

@@ -74,12 +74,20 @@ class ChatWorkflow:
                 user_id=str(user_id),
                 conversation_id=conversation_id,
                 title=request.message[:60],
+                file_ids=request.file_ids,
             )
         else:
             session_row = self.conversation_service.find_session_by_conversation_id(conversation_id)
+            if session_row and request.file_ids is not None:
+                self.conversation_service.update_file_ids(session_row["id"], request.file_ids)
         
-        # 2. Check if this exact question has a cached response in Redis (user-scoped)
-        cache_key = f"chat:{user_id}:{conversation_id}:{request.message.strip().lower()}"
+        # 2. Check if this exact question has a cached response in Redis (user-scoped and document-aware)
+        file_ids_str = ""
+        if request.file_ids:
+            sorted_file_ids = sorted([str(fid) for fid in request.file_ids])
+            file_ids_str = ",".join(sorted_file_ids)
+            
+        cache_key = f"chat:{user_id}:{conversation_id}:{request.message.strip().lower()}:{file_ids_str}"
         cached_answer = self.cache_service.get_value(cache_key)
         # Fetch previous conversation history list from Redis memory
         stored_context = self.memory_service.get_messages(conversation_id)

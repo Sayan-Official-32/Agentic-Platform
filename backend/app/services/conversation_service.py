@@ -24,7 +24,7 @@ class ConversationService:
             client = SupabaseService.get_client()
             response = (
                 client.table("conversation_sessions")
-                .select("id, conversation_id, title, created_at, last_active_at")
+                .select("id, conversation_id, title, file_ids, created_at, last_active_at")
                 .eq("user_id", user_id)
                 .order("last_active_at", desc=True)
                 .execute()
@@ -34,7 +34,9 @@ class ConversationService:
             logger.error(f"Failed to list conversations: {e}")
             return []
 
-    def create_conversation(self, user_id: str, conversation_id: str, title: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def create_conversation(
+        self, user_id: str, conversation_id: str, title: Optional[str] = None, file_ids: Optional[List[str]] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Creates a new conversation session row in Supabase.
         """
@@ -46,6 +48,7 @@ class ConversationService:
                     "user_id": user_id,
                     "conversation_id": conversation_id,
                     "title": title or "New Chat",
+                    "file_ids": file_ids or [],
                 })
                 .execute()
             )
@@ -131,7 +134,7 @@ class ConversationService:
             client = SupabaseService.get_client()
             response = (
                 client.table("conversation_sessions")
-                .select("id, conversation_id, title, created_at, last_active_at")
+                .select("id, conversation_id, title, file_ids, created_at, last_active_at")
                 .eq("conversation_id", conversation_id)
                 .limit(1)
                 .execute()
@@ -142,3 +145,15 @@ class ConversationService:
         except Exception as e:
             logger.error(f"Failed to find session by conversation_id: {e}")
             return None
+
+    def update_file_ids(self, session_id: str, file_ids: List[str]) -> None:
+        """
+        Updates the associated file IDs for a conversation session.
+        """
+        try:
+            client = SupabaseService.get_client()
+            client.table("conversation_sessions").update({
+                "file_ids": file_ids
+            }).eq("id", session_id).execute()
+        except Exception as e:
+            logger.error(f"Failed to update conversation file_ids: {e}")

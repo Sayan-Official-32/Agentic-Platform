@@ -60,6 +60,7 @@ type ConversationSession = {
   id: string;
   conversation_id: string;
   title: string;
+  file_ids?: string[];
   created_at: string;
   last_active_at: string;
 };
@@ -97,6 +98,8 @@ type UserFile = {
   status: "processing" | "ready" | "failed";
   chunk_count: number;
   file_size?: number;
+  suggested_questions?: string[];
+  conversation_id?: string;
   created_at: string;
   error_message?: string;
 };
@@ -291,6 +294,26 @@ export default function Home() {
       })),
     [messages]
   );
+
+  // Calculate dynamic quick prompts based on selected/active documents
+  const activeQuickPrompts = useMemo(() => {
+    const selectedFiles = files.filter(
+      (f) => selectedFileIds.includes(f.id) && f.suggested_questions && f.suggested_questions.length > 0
+    );
+    
+    if (selectedFiles.length > 0) {
+      const allQuestions = selectedFiles.flatMap((f) => f.suggested_questions || []);
+      const uniqueQuestions = Array.from(new Set(allQuestions));
+      if (uniqueQuestions.length > 0) {
+        return uniqueQuestions.slice(0, 4);
+      }
+    }
+    return quickPrompts;
+  }, [files, selectedFileIds]);
+
+  const hasUploadedDocs = useMemo(() => {
+    return files.some((f) => f.status === "ready");
+  }, [files]);
 
   const isAuthenticated = Boolean(token);
   const messageCount = Math.max(messages.length - 1, 0);
@@ -542,6 +565,14 @@ export default function Home() {
     if (!token) return;
     setActiveSessionId(session.id);
     setConversationId(session.conversation_id);
+    
+    // Restore associated document check-states
+    if (session.file_ids && Array.isArray(session.file_ids)) {
+      setSelectedFileIds(session.file_ids);
+    } else {
+      setSelectedFileIds([]);
+    }
+    
     appendLog("INFO", `Loading conversation: ${session.title}`);
     try {
       const response = await fetch(`${BACKEND_URL}/api/v1/conversations/${session.id}/messages`, {
@@ -630,6 +661,33 @@ export default function Home() {
     if (!token || uploading) return;
     setUploading(true);
 
+    let currentSessionId = activeSessionId;
+    if (!currentSessionId) {
+      try {
+        appendLog("INFO", "Pre-creating a new conversation session to link this document...");
+        const convRes = await fetch(`${BACKEND_URL}/api/v1/conversations`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: `Chat with ${file.name.slice(0, 30)}`,
+          }),
+        });
+        if (convRes.ok) {
+          const sessionData = await convRes.json();
+          currentSessionId = sessionData.id;
+          setActiveSessionId(sessionData.id);
+          setConversationId(sessionData.conversation_id);
+          // Refresh list
+          void fetchConversations();
+        }
+      } catch (e) {
+        appendLog("ERROR", "Failed to pre-create conversation session.");
+      }
+    }
+
     // Quick-show file representation in list as processing
     const tempFileId = `temp-${Date.now()}`;
     const tempFile: UserFile = {
@@ -638,6 +696,7 @@ export default function Home() {
       file_type: file.name.split('.').pop() || "",
       status: "processing",
       chunk_count: 0,
+      conversation_id: currentSessionId || undefined,
       created_at: new Date().toISOString()
     };
     setFiles((prev) => [tempFile, ...prev]);
@@ -647,7 +706,11 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(`${BACKEND_URL}/api/v1/ingest/upload`, {
+      const uploadUrl = currentSessionId
+        ? `${BACKEND_URL}/api/v1/ingest/upload?conversation_id=${currentSessionId}`
+        : `${BACKEND_URL}/api/v1/ingest/upload`;
+
+      const response = await fetch(uploadUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -1291,18 +1354,29 @@ export default function Home() {
                        gap: "6px",
                        marginTop: "4px"
                      }}>
-                       {files.length === 0 ? (
-                         <div style={{ fontSize: "11px", opacity: 0.5, textAlign: "center", padding: "8px 0" }}>
-                           No documents uploaded yet.
-                         </div>
-                       ) : (
-                         files.map((file) => {
-                           const isProcessing = file.status === "processing";
-                           const isReady = file.status === "ready";
-                           const isFailed = file.status === "failed";
-                           const isSelected = selectedFileIds.includes(file.id);
-                           
-                           return (
+                       {(() => {
+                          const conversationFiles = files.filter(
+                            (file) => 
+                              !file.conversation_id || 
+                              file.conversation_id === activeSessionId || 
+                              file.id.startsWith("temp-")
+                          );
+
+                          if (conversationFiles.length === 0) {
+                            return (
+                              <div style={{ fontSize: "11px", opacity: 0.5, textAlign: "center", padding: "8px 0" }}>
+                                No documents uploaded in this conversation.
+                              </div>
+                            );
+                          }
+
+                          return conversationFiles.map((file) => {
+                            const isProcessing = file.status === "processing";
+                            const isReady = file.status === "ready";
+                            const isFailed = file.status === "failed";
+                            const isSelected = selectedFileIds.includes(file.id);
+                            
+                            return (
                              <div key={file.id} style={{
                                display: "flex",
                                alignItems: "center",
@@ -1392,8 +1466,8 @@ export default function Home() {
                                </div>
                              </div>
                            );
-                         })
-                       )}
+                         });
+                       })()}
                      </div>
                    </div>
                  </div>
@@ -1531,28 +1605,32 @@ export default function Home() {
               </div>
 
               <div className="prompt-dock">
-                <div className="prompt-dock-header">
-                  <span className="prompt-dock-title">
-                    <Zap size={11} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }} />
-                    quick prompts
-                  </span>
-                  <span className="prompt-dock-meta">tap to load</span>
-                </div>
+                {hasUploadedDocs && (
+                  <>
+                    <div className="prompt-dock-header">
+                      <span className="prompt-dock-title">
+                        <Zap size={11} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }} />
+                        quick prompts
+                      </span>
+                      <span className="prompt-dock-meta">tap to load</span>
+                    </div>
 
-                <div className="prompt-scroll">
-                  <div className="prompt-row">
-                    {quickPrompts.map((prompt) => (
-                      <button
-                        key={prompt}
-                        type="button"
-                        onClick={() => setInput(prompt)}
-                        className="prompt-chip-btn"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                    <div className="prompt-scroll">
+                      <div className="prompt-row">
+                        {activeQuickPrompts.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => setInput(prompt)}
+                            className="prompt-chip-btn"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="composer-box">
                   <textarea

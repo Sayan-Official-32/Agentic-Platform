@@ -15,6 +15,8 @@ class UserFileResponse(BaseModel):
     status: str            # processing | ready | failed
     chunk_count: int
     file_size: Optional[int] = None
+    suggested_questions: Optional[List[str]] = None
+    conversation_id: Optional[UUID] = None
     created_at: datetime
 
 class FileIngestResponse(BaseModel):
@@ -25,6 +27,8 @@ class FileIngestResponse(BaseModel):
     chunks_created: int
     storage_path: str
     status: str
+    suggested_questions: Optional[List[str]] = None
+    conversation_id: Optional[UUID] = None
 
 class ChunkResult(BaseModel):
     """Represents a matching document chunk fragment from pgvector similarity searches."""

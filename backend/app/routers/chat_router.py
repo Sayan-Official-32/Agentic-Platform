@@ -57,6 +57,30 @@ def list_conversations(current_user: UserResponse = Depends(get_current_user)) -
     return conversation_service.list_conversations(str(current_user.id))
 
 
+@router.post("/conversations")
+def create_empty_conversation(
+    request_data: dict,
+    current_user: UserResponse = Depends(get_current_user),
+) -> dict:
+    """
+    Explicitly creates a new empty conversation session record.
+    """
+    import uuid
+    conversation_id = request_data.get("conversation_id") or str(uuid.uuid4())
+    title = request_data.get("title") or "New Chat"
+    file_ids = request_data.get("file_ids") or []
+    
+    session = conversation_service.create_conversation(
+        user_id=str(current_user.id),
+        conversation_id=conversation_id,
+        title=title,
+        file_ids=file_ids,
+    )
+    if not session:
+        raise HTTPException(status_code=500, detail="Failed to create conversation session.")
+    return session
+
+
 @router.get("/conversations/{conversation_id}/messages")
 def get_conversation_messages(
     conversation_id: str,

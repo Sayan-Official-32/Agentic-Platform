@@ -156,8 +156,25 @@ export default function Home() {
   const [hideLeftPanel, setHideLeftPanel] = useState(false);
   const [hideRightPanel, setHideRightPanel] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showProfileMenu) return;
+    function handleClickOutside(event: Event) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showProfileMenu]);
   
   const resizeStateRef = useRef<{
     target: "left" | "right" | null;
@@ -312,8 +329,13 @@ export default function Home() {
   }, [files, selectedFileIds]);
 
   const hasUploadedDocs = useMemo(() => {
-    return files.some((f) => f.status === "ready");
-  }, [files]);
+    return files.some(
+      (f) =>
+        f.conversation_id === activeSessionId ||
+        selectedFileIds.includes(f.id) ||
+        f.id.startsWith("temp-")
+    );
+  }, [files, activeSessionId, selectedFileIds]);
 
   const isAuthenticated = Boolean(token);
   const messageCount = Math.max(messages.length - 1, 0);
@@ -1122,11 +1144,78 @@ export default function Home() {
               >
                 <RefreshCw size={13} className={healthLoading ? "animate-spin" : ""} />
               </button>
-              <div
-                className="user-profile-avatar"
-                title={`Logged in as ${loggedInEmail}`}
-              >
-                {loggedInEmail ? loggedInEmail.charAt(0).toUpperCase() : "A"}
+              <div ref={profileMenuRef} style={{ position: "relative" }}>
+                <div
+                  className="user-profile-avatar"
+                  title={`Logged in as ${loggedInEmail}`}
+                  onClick={() => setShowProfileMenu(prev => !prev)}
+                >
+                  {loggedInEmail ? loggedInEmail.charAt(0).toUpperCase() : "A"}
+                </div>
+                {showProfileMenu && (
+                  <div style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "38px",
+                    width: "200px",
+                    background: "rgba(10, 10, 15, 0.98)",
+                    border: "1px solid var(--border-glass)",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                    padding: "12px",
+                    zIndex: 1000,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px"
+                  }}>
+                    <div style={{ fontSize: "11px", opacity: 0.6, wordBreak: "break-all" }}>
+                      {loggedInEmail}
+                    </div>
+                    <hr style={{ border: "0", borderTop: "1px solid var(--border-glass)", margin: "4px 0" }} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void fetchHealth("Manual health refresh");
+                        setShowProfileMenu(false);
+                      }}
+                      className="btn-secondary"
+                      disabled={healthLoading}
+                      style={{
+                        padding: "8px",
+                        fontSize: "11px",
+                        justifyContent: "flex-start",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        width: "100%"
+                      }}
+                    >
+                      <RefreshCw size={12} className={healthLoading ? "animate-spin" : ""} />
+                      {healthLoading ? "checking..." : "refresh status"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        logout();
+                        setShowProfileMenu(false);
+                      }}
+                      className="btn-secondary"
+                      style={{
+                        padding: "8px",
+                        fontSize: "11px",
+                        justifyContent: "flex-start",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        width: "100%",
+                        color: "var(--color-error)"
+                      }}
+                    >
+                      <LogOut size={12} />
+                      logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </header>
@@ -1502,44 +1591,11 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="panel-card">
-                  <div className="panel-header">
-                    <div>
-                      <div className="section-kicker">
-                        <Settings size={12} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }} />
-                        actions
-                      </div>
-                      <div className="panel-title">controls</div>
-                    </div>
+                {authMessage && (
+                  <div className="card-footer-info" style={{ marginTop: 8, textAlign: "center" }}>
+                    {authMessage}
                   </div>
-
-                  <div className="action-column">
-                    <button
-                      type="button"
-                      onClick={() => void fetchHealth("Manual health refresh")}
-                      className="btn-secondary btn-secondary-square"
-                      disabled={healthLoading}
-                    >
-                      {healthLoading ? (
-                        <>
-                          <Clock size={14} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
-                          checking...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw size={14} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
-                          refresh
-                        </>
-                      )}
-                    </button>
-                    <button type="button" onClick={logout} className="btn-secondary btn-secondary-square">
-                      <LogOut size={14} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
-                      logout
-                    </button>
-                  </div>
-
-                  <div className="card-footer-info" style={{ marginTop: 8 }}>{authMessage}</div>
-                </div>
+                )}
               </aside>
             )}
 

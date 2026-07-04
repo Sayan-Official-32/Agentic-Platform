@@ -469,6 +469,10 @@ export default function Home() {
     setToken("");
     setLoggedInEmail("");
     setConversationId(null);
+    setActiveSessionId(null);
+    setSelectedFileIds([]);
+    setFiles([]);
+    setConversations([]);
     setLastResponse(null);
     setInput("");
     setAuthMessage("Session offline.");
@@ -625,7 +629,8 @@ export default function Home() {
   function createNewChat() {
     setConversationId(null);
     setActiveSessionId(null);
-    setMessages([{ role: "assistant", content: "\u2713 Ready. Test summary, search & multi-agent flows." }]);
+    setSelectedFileIds([]);
+    setMessages([{ role: "assistant", content: "✓ Ready. Test summary, search & multi-agent flows." }]);
     setLastResponse(null);
     appendLog("INFO", "New chat created.");
   }

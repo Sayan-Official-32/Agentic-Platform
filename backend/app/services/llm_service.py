@@ -131,10 +131,10 @@ class LLMService:
         
         # Fallback default assignments
         default_models = {
-            ModelCapability.SUMMARIZATION: "deepseek-ai/DeepSeek-V4-Pro",
+            ModelCapability.SUMMARIZATION: "meta-llama/Llama-3.3-70B-Instruct",
             ModelCapability.CODE_GENERATION: "Qwen/Qwen2.5-Coder-7B-Instruct",
             ModelCapability.QUESTION_ANSWERING: "meta-llama/Llama-3.2-3B-Instruct",
-            ModelCapability.REASONING: "deepseek-ai/DeepSeek-V4-Pro",
+            ModelCapability.REASONING: "meta-llama/Llama-3.3-70B-Instruct",
         }
         
         model = default_models.get(capability, "meta-llama/Llama-3.1-8B-Instruct")

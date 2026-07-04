@@ -19,7 +19,6 @@ class EmbeddingService:
         self.cache_ttl = settings.embedding_cache_ttl
         # Share Redis connection from settings configuration
         self.cache = RedisMemoryService(settings.redis_url, settings.redis_ttl_seconds)
-        self._load_model()
 
     def _load_model(self):
         """Loads the SentenceTransformer model into memory if not already loaded."""
@@ -27,8 +26,14 @@ class EmbeddingService:
             logger.info(f"Loading embedding model: {self.model_name}...")
             try:
                 from sentence_transformers import SentenceTransformer
-                EmbeddingService._model = SentenceTransformer(self.model_name)
-                logger.info("Embedding model loaded successfully.")
+                try:
+                    # Try loading from local cache first to avoid network checks
+                    EmbeddingService._model = SentenceTransformer(self.model_name, local_files_only=True)
+                    logger.info("Embedding model loaded from local files successfully.")
+                except Exception:
+                    logger.info(f"Model {self.model_name} not found locally or needs update, downloading from HF Hub...")
+                    EmbeddingService._model = SentenceTransformer(self.model_name, local_files_only=False)
+                    logger.info("Embedding model downloaded and loaded successfully.")
             except Exception as exc:
                 logger.error(f"Failed to load sentence-transformers: {exc}", exc_info=True)
                 raise RuntimeError("Could not load embedding transformer.") from exc
@@ -55,6 +60,9 @@ class EmbeddingService:
                 return json.loads(cached_val)
         except Exception as exc:
             logger.debug(f"Redis cache read error for embedding: {exc}")
+
+        # Ensure model is loaded before inference
+        self._load_model()
 
         # 2. Cache miss: run model inference
         vector = EmbeddingService._model.encode(text).tolist()
@@ -96,6 +104,8 @@ class EmbeddingService:
         # 2. Run inference for uncached texts in batch
         if uncached_texts:
             logger.info(f"Computing embeddings for {len(uncached_texts)} uncached chunks.")
+            # Ensure model is loaded before inference
+            self._load_model()
             vectors = EmbeddingService._model.encode(uncached_texts).tolist()
             
             for index, vector, text in zip(uncached_indices, vectors, uncached_texts):

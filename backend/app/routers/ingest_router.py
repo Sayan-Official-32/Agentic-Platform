@@ -156,16 +156,23 @@ async def ingest_uploaded_file(
                 logger.error(f"Failed to save suggested questions to DB: {e}")
 
         # Link file to conversation if id was provided
-        if conversation_id:
+        valid_conv_uuid = None
+        if conversation_id and conversation_id.strip() and conversation_id.strip().lower() not in ("null", "undefined"):
             try:
-                conv_res = supabase.table("conversation_sessions").select("file_ids").eq("id", conversation_id).execute()
+                valid_conv_uuid = uuid.UUID(conversation_id.strip())
+            except ValueError:
+                logger.error(f"Invalid conversation_id UUID format: {conversation_id}")
+
+        if valid_conv_uuid:
+            try:
+                conv_res = supabase.table("conversation_sessions").select("file_ids").eq("id", str(valid_conv_uuid)).execute()
                 if conv_res.data:
                     current_file_ids = conv_res.data[0].get("file_ids") or []
                     if str(file_id) not in current_file_ids:
                         new_file_ids = current_file_ids + [str(file_id)]
                         supabase.table("conversation_sessions").update({
                             "file_ids": new_file_ids
-                        }).eq("id", conversation_id).execute()
+                        }).eq("id", str(valid_conv_uuid)).execute()
             except Exception as e:
                 logger.error(f"Failed to append file to conversation: {e}")
 
@@ -177,7 +184,7 @@ async def ingest_uploaded_file(
             storage_path=storage_path,
             status="ready",
             suggested_questions=suggested_questions,
-            conversation_id=uuid.UUID(conversation_id) if conversation_id else None
+            conversation_id=valid_conv_uuid
         )
 
     except Exception as exc:

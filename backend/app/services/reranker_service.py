@@ -17,7 +17,6 @@ class RerankerService:
         self.enabled = settings.reranker_enabled
         self.model_name = settings.reranker_model
         self.top_k = settings.reranker_top_k
-        self._load_model()
 
     def _load_model(self):
         """Loads the CrossEncoder model if enabled and not already loaded."""
@@ -25,8 +24,14 @@ class RerankerService:
             logger.info(f"Loading reranker model: {self.model_name}...")
             try:
                 from sentence_transformers import CrossEncoder
-                RerankerService._model = CrossEncoder(self.model_name)
-                logger.info("Reranker model loaded successfully.")
+                try:
+                    # Try loading from local cache first to avoid network checks
+                    RerankerService._model = CrossEncoder(self.model_name, local_files_only=True)
+                    logger.info("Reranker model loaded from local files successfully.")
+                except Exception:
+                    logger.info(f"Reranker model {self.model_name} not found locally or needs update, downloading from HF Hub...")
+                    RerankerService._model = CrossEncoder(self.model_name, local_files_only=False)
+                    logger.info("Reranker model downloaded and loaded successfully.")
             except Exception as exc:
                 logger.error(f"Failed to load CrossEncoder reranker: {exc}", exc_info=True)
                 # Keep service alive but disable to run fallback routing
@@ -41,6 +46,9 @@ class RerankerService:
             return []
 
         limit = top_k if top_k is not None else self.top_k
+
+        # Load model lazily if enabled
+        self._load_model()
 
         if not self.enabled or RerankerService._model is None:
             logger.info("Reranker is disabled or unavailable. Returning original vector ranking.")

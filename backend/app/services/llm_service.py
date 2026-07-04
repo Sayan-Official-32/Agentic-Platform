@@ -88,6 +88,9 @@ class LLMService:
     LLM Service using HuggingFace Router with OpenAI-compatible API.
     Selects specialized models dynamically depending on task requirements.
     """
+    _total_prompt_tokens = 0
+    _total_completion_tokens = 0
+    _total_tokens = 0
     
     def __init__(self):
         self.client = None
@@ -147,7 +150,7 @@ class LLMService:
         prompt: str,
         model: Optional[str] = None,
         max_tokens: int = 2048,
-        temperature: float = 0.7,
+        temperature: float = 0.5,
         capability: Optional[ModelCapability] = None,
         ) -> str:
         """
@@ -188,7 +191,16 @@ class LLMService:
                 temperature=temperature,
           )
           
-          # 3. Retrieve response text content
+          # 3. Record token usage metrics
+          try:
+              if hasattr(completion, "usage") and completion.usage:
+                  LLMService._total_prompt_tokens += getattr(completion.usage, "prompt_tokens", 0)
+                  LLMService._total_completion_tokens += getattr(completion.usage, "completion_tokens", 0)
+                  LLMService._total_tokens += getattr(completion.usage, "total_tokens", 0)
+          except Exception as exc:
+              logger.debug(f"Failed to record token usage: {exc}")
+
+          # 4. Retrieve response text content
           response = completion.choices[0].message.content or ""
           logger.info(f"Generated {len(response)} characters")
             
@@ -227,7 +239,7 @@ class LLMService:
             prompt=prompt,
             capability=ModelCapability.QUESTION_ANSWERING,
             max_tokens=1024,
-            temperature=0.7,
+            temperature=0.5,
         )
 
     async def grounded_answer(
@@ -261,7 +273,7 @@ class LLMService:
             prompt=prompt,
             capability=ModelCapability.REASONING,
             max_tokens=2048,
-            temperature=0.7,
+            temperature=0.5,
         )
 
     def list_available_models(self) -> List[Dict]:

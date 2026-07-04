@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from app.config.settings import settings
 from app.memory.redis_memory import RedisMemoryService
 from app.services.search_service import SearchService
+from app.services.llm_service import LLMService
 
 # APIRouter is tagged with "health" to categorize it in the openapi docs.
 router = APIRouter(tags=["health"])
@@ -29,4 +30,9 @@ def health() -> dict[str, object]:
         "llm_provider": settings.llm_provider,
         "redis_connected": memory_service.using_redis,           # True if connected to Redis
         "supabase_connected": search_service.available,     # True if connected to Supabase
+        "token_usage": {
+            "prompt_tokens": LLMService._total_prompt_tokens,
+            "completion_tokens": LLMService._total_completion_tokens,
+            "total_tokens": LLMService._total_tokens,
+        }
     }

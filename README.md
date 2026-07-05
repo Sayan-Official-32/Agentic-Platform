@@ -66,7 +66,7 @@ graph TD
     User([End User]) -->|HTTPS / JWT| FE[Next.js Frontend]
     FE -->|REST API| BE[FastAPI Backend]
 
-    subgraph FastAPI Service Routing
+    subgraph service_routing ["FastAPI Service Routing"]
         BE -->|Auth Verification| Token[Token Service]
         BE -->|Workflows| WF[Chat Workflow Executor]
         
@@ -85,7 +85,7 @@ graph TD
         DBClient -->|Rerank Candidates| Reranker[CrossEncoder Model]
     end
 
-    subgraph Databases & Providers
+    subgraph providers ["Databases & Providers"]
         DBClient -->|pgvector Cosine Search| Supabase[(Supabase DB)]
         LLMClient -->|API Completions| LLM[HF Router / Local Ollama]
         BE -->|Cache & Session Memory| Redis[(Redis Stack)]

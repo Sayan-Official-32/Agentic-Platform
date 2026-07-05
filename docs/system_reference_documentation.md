@@ -55,7 +55,7 @@ graph TD
     User([End User]) -->|HTTPS / JWT| FE[Next.js Frontend]
     FE -->|REST API / JWT| BE[FastAPI Backend]
 
-    subgraph Service Layer (FastAPI)
+    subgraph service_layer ["Service Layer (FastAPI)"]
         BE -->|Route Analysis| SV[Supervisor Agent]
         SV -->|greeting| G[Greeting Handler]
         SV -->|search| SA[Search Agent]
@@ -74,7 +74,7 @@ graph TD
         GA -->|Final LLM Synthesis| LLM
     end
 
-    subgraph Cache & State Layer
+    subgraph cache_state ["Cache & State Layer"]
         BE -->|Session / Cache Store| RD[(Redis Stack)]
         RD -.->|Trace logs| LF[Langfuse Dashboard]
     end

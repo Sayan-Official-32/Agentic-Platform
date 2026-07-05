@@ -1998,7 +1998,7 @@ function renderRichText(text: string) {
           return (
             <div key={`bullet-${index}`} className="rich-bullet-row">
               <span className="rich-bullet">▸</span>
-              <span>{trimmed.slice(2)}</span>
+              <span>{renderInlineFormatting(trimmed.slice(2))}</span>
             </div>
           );
         }
@@ -2008,7 +2008,7 @@ function renderRichText(text: string) {
           return (
             <div key={`number-${index}`} className="rich-bullet-row">
               <span className="rich-number">{marker}</span>
-              <span>{rest.join(" ")}</span>
+              <span>{renderInlineFormatting(rest.join(" "))}</span>
             </div>
           );
         }
@@ -2024,7 +2024,7 @@ function renderRichText(text: string) {
 }
 
 function renderInlineFormatting(text: string) {
-  const parts = text.split(/(`[^`]+`)/g);
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
 
   return parts.map((part, index) => {
     if (part.startsWith("`") && part.endsWith("`")) {
@@ -2032,6 +2032,13 @@ function renderInlineFormatting(text: string) {
         <code key={`code-${index}`} className="inline-code">
           {part.slice(1, -1)}
         </code>
+      );
+    }
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={`bold-${index}`} className="font-bold text-gray-900 dark:text-gray-100">
+          {part.slice(2, -2)}
+        </strong>
       );
     }
 

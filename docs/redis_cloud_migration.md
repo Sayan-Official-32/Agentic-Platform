@@ -47,19 +47,33 @@ If you want to keep everything within your own AWS account without paying for El
    * Add **SSH (Port 22)**: Restrict to your IP.
    * Add **Custom TCP (Port 6379)**: Restrict source to your **AWS App Runner IP / ECS Service Security Group** to ensure public access is blocked.
 3. **Install Docker on the Instance**:
-   Connect to your EC2 instance via SSH:
+   Connect to your EC2 instance via SSH (replace `your-key.pem` and `your-ec2-public-ip` with your actual key name and public IP. Note: if you are already inside the EC2 terminal, e.g. showing `ubuntu@ip-...`, you do not need to run SSH inside it):
    ```bash
    ssh -i your-key.pem ec2-user@your-ec2-public-ip
    ```
-   Run the following commands to install and start Docker:
-   ```bash
-   sudo dnf update -y
-   sudo dnf install -y docker
-   sudo systemctl start docker
-   sudo systemctl enable docker
-   sudo usermod -aG docker ec2-user
-   ```
-   Log out and log back in to apply group permissions.
+   
+   Identify your OS and run the appropriate commands:
+
+   * **For Ubuntu (packages use `apt`):**
+     ```bash
+     sudo apt update -y
+     sudo apt install -y docker.io
+     sudo systemctl start docker
+     sudo systemctl enable docker
+     sudo usermod -aG docker ubuntu
+     newgrp docker # Apply group membership without logout
+     ```
+
+   * **For Amazon Linux 2023 (packages use `dnf`):**
+     ```bash
+     sudo dnf update -y
+     sudo dnf install -y docker
+     sudo systemctl start docker
+     sudo systemctl enable docker
+     sudo usermod -aG docker ec2-user
+     newgrp docker # Apply group membership without logout
+     ```
+
 4. **Run the Redis Container**:
    Run Redis with authentication enabled matching your local password:
    ```bash

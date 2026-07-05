@@ -76,7 +76,8 @@ graph TD
         SV -->|Route: summary| SU[Summary Agent]
         SV -->|Route: parallel| PA[Parallel Executive Node]
 
-        PA -->|Parallel Task| SA & SU
+        PA -->|Parallel Task| SA
+        PA -->|Parallel Task| SU
         SA -->|Vector Lookup| DBClient[Search Service]
         SU -->|Context Summary| LLMClient[LLM Service]
         

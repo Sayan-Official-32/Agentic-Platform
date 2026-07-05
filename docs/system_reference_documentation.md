@@ -62,7 +62,8 @@ graph TD
         SV -->|summary| SU[Summary Agent]
         SV -->|parallel| PA[Parallel Executive Node]
 
-        PA -->|Executes in Parallel| SA & SU
+        PA -->|Executes in Parallel| SA
+        PA -->|Executes in Parallel| SU
         SA -->|Query Lookup| SE[Search Service]
         SU -->|Context Synthesis| LLM[LLM Service]
         

@@ -35,8 +35,7 @@ class Settings(BaseModel):
     ]
     
     # --- LLM Provider Selection ---
-    # Literal specifies that llm_provider MUST be either "ollama" or "huggingface". Any other value will raise a validation error.
-    llm_provider: Literal["ollama", "huggingface"] = os.getenv("LLM_PROVIDER", "ollama") 
+    llm_provider: Literal["ollama", "huggingface", "llm"] = os.getenv("LLM_PROVIDER", "llm") 
     
     # --- Ollama Configuration (Local LLMs) ---
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")

@@ -315,30 +315,36 @@ export default function Home() {
     [messages]
   );
 
-  // Calculate dynamic quick prompts based on selected/active documents
+  // Calculate dynamic quick prompts strictly derived from uploaded user documents
   const activeQuickPrompts = useMemo(() => {
-    const selectedFiles = files.filter(
-      (f) => selectedFileIds.includes(f.id) && f.suggested_questions && f.suggested_questions.length > 0
-    );
-    
-    if (selectedFiles.length > 0) {
-      const allQuestions = selectedFiles.flatMap((f) => f.suggested_questions || []);
-      const uniqueQuestions = Array.from(new Set(allQuestions));
-      if (uniqueQuestions.length > 0) {
-        return uniqueQuestions.slice(0, 4);
-      }
-    }
-    return quickPrompts;
-  }, [files, selectedFileIds]);
-
-  const hasUploadedDocs = useMemo(() => {
-    return files.some(
+    const activeFiles = files.filter(
       (f) =>
-        f.conversation_id === activeSessionId ||
-        selectedFileIds.includes(f.id) ||
-        f.id.startsWith("temp-")
+        (f.conversation_id === activeSessionId || selectedFileIds.includes(f.id) || f.id.startsWith("temp-")) &&
+        f.status !== "failed"
     );
+
+    if (activeFiles.length === 0) {
+      return [];
+    }
+
+    const allQuestions: string[] = [];
+    activeFiles.forEach((file) => {
+      if (file.suggested_questions && file.suggested_questions.length > 0) {
+        allQuestions.push(...file.suggested_questions);
+      } else {
+        allQuestions.push(
+          `Summarize ${file.file_name}`,
+          `Key facts from ${file.file_name}`,
+          `What are the main findings in ${file.file_name}?`
+        );
+      }
+    });
+
+    const uniqueQuestions = Array.from(new Set(allQuestions));
+    return uniqueQuestions.slice(0, 4);
   }, [files, activeSessionId, selectedFileIds]);
+
+  const showQuickPrompts = activeQuickPrompts.length > 0;
 
   const isAuthenticated = Boolean(token);
   const messageCount = Math.max(messages.length - 1, 0);
@@ -954,7 +960,7 @@ export default function Home() {
   const redisTone: StatusTone = health?.redis_connected ? "online" : "offline";
   const supabaseTone: StatusTone = health?.supabase_connected ? "online" : "offline";
   const modelTone: StatusTone =
-    health?.llm_provider === "ollama" || health?.llm_provider === "huggingface"
+    health?.llm_provider === "ollama" || health?.llm_provider === "huggingface" || health?.llm_provider === "llm"
       ? healthError
         ? "offline"
         : "online"
@@ -1672,12 +1678,12 @@ export default function Home() {
               </div>
 
               <div className="prompt-dock">
-                {hasUploadedDocs && (
+                {showQuickPrompts && (
                   <>
                     <div className="prompt-dock-header">
                       <span className="prompt-dock-title">
                         <Zap size={11} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }} />
-                        quick prompts
+                        document quick prompts
                       </span>
                       <span className="prompt-dock-meta">tap to load</span>
                     </div>

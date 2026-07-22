@@ -1,14 +1,21 @@
 # data_ingest/file_ingest.py
 # This module acts as the router/orchestrator for file ingestion.
-# It detects the file type (out of 9 supported extensions) and routes it to the correct parser,
-# mapping all inputs to a unified {"content": str, "metadata": dict} structure.
+# Uses LangChain's Document Loaders to automatically parse and extract text from files.
 
 import logging
 from pathlib import Path
 from typing import Dict, List, Any, Literal
 
-from app.data_ingest.csv_ingest import load_documents_from_csv
-from app.data_ingest.pdf_ingest import load_documents_from_pdf
+from langchain_community.document_loaders import (
+    PyPDFLoader,
+    CSVLoader,
+    Docx2txtLoader,
+    TextLoader,
+    UnstructuredExcelLoader,
+    UnstructuredPowerPointLoader,
+    BSHTMLLoader,
+    UnstructuredMarkdownLoader,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +50,7 @@ def detect_file_type(file_path: str) -> FileType:
 
 def load_documents_from_file(file_path: str, file_type: FileType | None = None) -> List[Dict[str, Any]]:
     """
-    Loads documents from a single file by auto-detecting its type and calling the appropriate loader.
+    Loads documents from a single file using LangChain document loaders.
     Always returns a list of dictionaries with structure: {"content": str, "metadata": dict}.
     """
     file_path_obj = Path(file_path)
@@ -53,62 +60,44 @@ def load_documents_from_file(file_path: str, file_type: FileType | None = None) 
     if file_type is None:
         file_type = detect_file_type(file_path)
     
-    logger.info(f"Routing to parser for {file_type.upper()} file: {file_path}")
+    logger.info(f"Routing to LangChain parser for {file_type.upper()} file: {file_path}")
     
-    if file_type == "pdf":
-        return load_documents_from_pdf(file_path)
+    try:
+        if file_type == "pdf":
+            loader = PyPDFLoader(file_path)
+        elif file_type == "csv":
+            loader = CSVLoader(file_path)
+        elif file_type == "docx":
+            loader = Docx2txtLoader(file_path)
+        elif file_type in ("txt", "json"):
+            # Use TextLoader for raw text and json objects without explicit schema
+            loader = TextLoader(file_path)
+        elif file_type == "xlsx":
+            loader = UnstructuredExcelLoader(file_path)
+        elif file_type == "pptx":
+            loader = UnstructuredPowerPointLoader(file_path)
+        elif file_type == "html":
+            loader = BSHTMLLoader(file_path)
+        elif file_type == "md":
+            loader = UnstructuredMarkdownLoader(file_path)
+        else:
+            raise ValueError(f"Unsupported file type: {file_type}")
+            
+        # Execute LangChain loader
+        docs = loader.load()
         
-    elif file_type == "csv":
-        raw = load_documents_from_csv(file_path)
+        # Convert LangChain Document objects to our unified dict structure
         return [
             {
-                "content": item["snippet"],
-                "metadata": {
-                    "title": item["title"],
-                    "category": item["category"],
-                    "source": item["source"]
-                }
+                "content": doc.page_content,
+                "metadata": doc.metadata
             }
-            for item in raw
+            for doc in docs
         ]
         
-    elif file_type == "docx":
-        from app.data_ingest.docx_ingest import load_documents_from_docx
-        texts = load_documents_from_docx(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    elif file_type == "txt":
-        from app.data_ingest.txt_ingest import load_documents_from_txt
-        texts = load_documents_from_txt(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    elif file_type == "xlsx":
-        from app.data_ingest.xlsx_ingest import load_documents_from_xlsx
-        texts = load_documents_from_xlsx(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    elif file_type == "pptx":
-        from app.data_ingest.pptx_ingest import load_documents_from_pptx
-        texts = load_documents_from_pptx(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    elif file_type == "html":
-        from app.data_ingest.html_ingest import load_documents_from_html
-        texts = load_documents_from_html(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    elif file_type == "json":
-        from app.data_ingest.json_ingest import load_documents_from_json
-        texts = load_documents_from_json(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    elif file_type == "md":
-        from app.data_ingest.md_ingest import load_documents_from_md
-        texts = load_documents_from_md(file_path)
-        return [{"content": text, "metadata": {}} for text in texts]
-        
-    else:
-        raise ValueError(f"Unsupported file type: {file_type}")
+    except Exception as exc:
+        logger.error(f"LangChain loader failed for {file_path}: {exc}")
+        raise
 
 def load_documents_from_directory(
     directory_path: str,
@@ -129,7 +118,6 @@ def load_documents_from_directory(
         
     results: Dict[str, List[Dict[str, Any]]] = {}
     
-    # Map types to globs
     glob_patterns = {
         "pdf": "*.pdf",
         "csv": "*.csv",

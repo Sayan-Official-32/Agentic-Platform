@@ -85,64 +85,69 @@ class ModelConfig:
     
 class LLMService:
     """
-    LLM Service using HuggingFace Router with OpenAI-compatible API.
-    Selects specialized models dynamically depending on task requirements.
+    LLM Service with automatic multi-provider failover.
+    Attempts generation through Groq, OpenRouter, and HuggingFace sequentially.
     """
     _total_prompt_tokens = 0
     _total_completion_tokens = 0
     _total_tokens = 0
     
     def __init__(self):
-        self.client = None
+        self.last_used_model: str = "Unknown Model"
         self.langfuse_enabled = settings.langfuse_enabled
-        self._initialize_client()
+        self.providers = []
+        self._initialize_providers()
         
-    def _initialize_client(self):
-        """Initializes the OpenAI API client configured to hit HuggingFace's API gateway endpoint."""
-        if not settings.huggingface_api_key:
-            logger.warning("HuggingFace API key not configured")
-            return
-        
-        # HuggingFace provides an OpenAI-compatible endpoint.
-        # This allows us to use the official 'OpenAI' SDK, simply swapping out the base_url.
-        self.client = OpenAI(
-            base_url="https://router.huggingface.co/v1",
-            api_key=settings.huggingface_api_key,
-        )
-        
-        if self.langfuse_enabled:
-            logger.info("HuggingFace Router client initialized with Langfuse tracing enabled")
-        else:
-            logger.info("HuggingFace Router client initialized (Langfuse disabled)")
+    def _initialize_providers(self):
+        """Initializes client connections for all available LLM providers in order of priority."""
+        # 1. Groq (Ultra-fast priority)
+        if settings.groq_api_key:
+            try:
+                self.providers.append({
+                    "name": "Groq",
+                    "client": OpenAI(base_url="https://api.groq.com/openai/v1", api_key=settings.groq_api_key),
+                    "model": "llama-3.1-8b-instant"
+                })
+                logger.info("Initialized Groq provider client.")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Groq provider: {e}")
+
+        # 2. OpenRouter (Secondary fallback)
+        if settings.openrouter_api_key:
+            try:
+                self.providers.append({
+                    "name": "OpenRouter",
+                    "client": OpenAI(base_url="https://openrouter.ai/api/v1", api_key=settings.openrouter_api_key),
+                    "model": "meta-llama/llama-3.1-8b-instruct:free"
+                })
+                logger.info("Initialized OpenRouter provider client.")
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenRouter provider: {e}")
+
+        # 3. HuggingFace (Tertiary fallback)
+        if settings.huggingface_api_key:
+            try:
+                self.providers.append({
+                    "name": "HuggingFace",
+                    "client": OpenAI(base_url="https://router.huggingface.co/v1", api_key=settings.huggingface_api_key),
+                    "model": "Qwen/Qwen2.5-7B-Instruct"
+                })
+                logger.info("Initialized HuggingFace provider client.")
+            except Exception as e:
+                logger.warning(f"Failed to initialize HuggingFace provider: {e}")
+
+        if not self.providers:
+            logger.warning("No LLM providers configured! Please check API keys in .env.")
             
     def get_model_for_capability(self, capability: ModelCapability) -> str:
-        """
-        Picks the best model for a requested capability.
-        Allows overriding defaults via custom settings from the .env configuration.
-        """
+        """Picks the best model for a requested capability."""
         capability_models = {
             ModelCapability.SUMMARIZATION: settings.model_summarization,
             ModelCapability.CODE_GENERATION: settings.model_code_generation,
             ModelCapability.QUESTION_ANSWERING: settings.model_question_answering,
             ModelCapability.REASONING: settings.model_reasoning,
         }
-        
-        custom_model = capability_models.get(capability)
-        if custom_model:
-            logger.info(f"Using custom model for {capability.value}: {custom_model}")
-            return custom_model
-        
-        # Fallback default assignments
-        default_models = {
-            ModelCapability.SUMMARIZATION: "meta-llama/Llama-3.3-70B-Instruct",
-            ModelCapability.CODE_GENERATION: "Qwen/Qwen2.5-Coder-7B-Instruct",
-            ModelCapability.QUESTION_ANSWERING: "meta-llama/Llama-3.2-3B-Instruct",
-            ModelCapability.REASONING: "meta-llama/Llama-3.3-70B-Instruct",
-        }
-        
-        model = default_models.get(capability, "meta-llama/Llama-3.1-8B-Instruct")
-        logger.info(f"Using default model for {capability.value}: {model}")
-        return model
+        return capability_models.get(capability) or "llama-3.1-8b-instant"
     
     @observe(name="llm_generate")
     async def generate(
@@ -152,62 +157,53 @@ class LLMService:
         max_tokens: int = 2048,
         temperature: float = 0.5,
         capability: Optional[ModelCapability] = None,
-        ) -> str:
+    ) -> str:
         """
-        Sends a request to the LLM and returns the generated string output.
-        
-        Args:
-            prompt: Text prompt/context sent to the model.
-            model: Optional name of specific model. If omitted, uses capability to resolve it.
-            max_tokens: Limit on response tokens.
-            temperature: Creativity control (0.0 is deterministic, 1.0 is highly creative).
-            capability: Triggers model routing based on task scope.
+        Sends a request to the LLM with automatic provider failover.
+        Cycles through Groq -> OpenRouter -> HuggingFace until one succeeds.
         """
-        if not self.client:
-            raise RuntimeError("HuggingFace Router client not initialized. Check HF_TOKEN.")
-        
-        # 1. Resolve which model string to use
-        if not model and capability:
-            model = self.get_model_for_capability(capability)
-        elif not model:
-            model = "meta-llama/Llama-3.1-8B-Instruct"
+        if not self.providers:
+            raise RuntimeError("No LLM provider clients initialized. Check API keys in .env.")
             
-        logger.info(
-            f"Generating with HuggingFace Router",
-            extra={"model": model, "temperature": temperature, "max_tokens": max_tokens}
-        )
-        
-        try:
-          # 2. Call the chat completion endpoint
-          completion = self.client.chat.completions.create(
-                model=model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=max_tokens,
-                temperature=temperature,
-          )
-          
-          # 3. Record token usage metrics
-          try:
-              if hasattr(completion, "usage") and completion.usage:
-                  LLMService._total_prompt_tokens += getattr(completion.usage, "prompt_tokens", 0)
-                  LLMService._total_completion_tokens += getattr(completion.usage, "completion_tokens", 0)
-                  LLMService._total_tokens += getattr(completion.usage, "total_tokens", 0)
-          except Exception as exc:
-              logger.debug(f"Failed to record token usage: {exc}")
+        last_exception = None
 
-          # 4. Retrieve response text content
-          response = completion.choices[0].message.content or ""
-          logger.info(f"Generated {len(response)} characters")
+        for provider in self.providers:
+            p_name = provider["name"]
+            client = provider["client"]
+            target_model = model or provider["model"]
             
-          return response
-        except Exception as e:
-            logger.error(f"Error generating with HuggingFace Router: {e}")
-            raise
+            logger.info(
+                f"Attempting generation via provider '{p_name}' using model '{target_model}'...",
+                extra={"provider": p_name, "model": target_model}
+            )
+
+            try:
+                completion = client.chat.completions.create(
+                    model=target_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+
+                # Record usage metrics
+                try:
+                    if hasattr(completion, "usage") and completion.usage:
+                        LLMService._total_prompt_tokens += getattr(completion.usage, "prompt_tokens", 0)
+                        LLMService._total_completion_tokens += getattr(completion.usage, "completion_tokens", 0)
+                        LLMService._total_tokens += getattr(completion.usage, "total_tokens", 0)
+                except Exception:
+                    pass
+
+                response = completion.choices[0].message.content or ""
+                self.last_used_model = f"{p_name} ({target_model})"
+                logger.info(f"Generation successful via {self.last_used_model}")
+                return response
+
+            except Exception as exc:
+                logger.warning(f"Provider '{p_name}' failed: {exc}. Attempting next provider...")
+                last_exception = exc
+
+        raise RuntimeError(f"All configured LLM providers failed. Last error: {last_exception}")
         
     async def summarize(self, text: str, context: str = "") -> str:
         """Summarizes text using DeepSeek-V4-Pro (highly capable reasoning model)."""

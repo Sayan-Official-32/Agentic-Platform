@@ -65,6 +65,7 @@ class ChatResponse(BaseModel):
     'agent_results': Detailed logs of what each agent returned.
     'cached': True if the response was retrieved from Redis cache directly, avoiding LLM/Search execution.
     'context_messages': Number of messages currently stored in the conversation's memory.
+    'model_used': The exact LLM model/provider that generated the response.
     """
     conversation_id: str
     route: str
@@ -73,6 +74,9 @@ class ChatResponse(BaseModel):
     agent_results: List[AgentResult]
     cached: bool = False
     context_messages: int = 0
+    model_used: Optional[str] = None
+    question: Optional[str] = None
+    sources: Optional[str] = None
 
 class ConversationContextResponse(BaseModel):
     """

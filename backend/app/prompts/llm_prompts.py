@@ -84,16 +84,19 @@ Response:"""
         """
         history_section = f"\nHistory:\n{conversation_history}\n" if conversation_history else ""
 
-        return f"""You are a helpful AI assistant. Answer using strictly the retrieved documents.
-Format your answer with standard markdown:
-- **Direct Answer**: Brief, clear response to the question.
-- **Details**: Factual supporting details from the context (key dates, numeric values).
-- **Sources**: Mention the source documents/files.
+        return f"""You are a formal AI assistant. Answer the user question based strictly on the provided retrieved documents context.
 
-Question: {user_message}
-Retrieved Documents: {retrieved_documents}
-{history_section}
-If information is missing, state that clearly under Direct Answer. Keep it concise."""
+Formatting Guidelines:
+- Provide ONE cohesive, highly professional, structured answer using standard Markdown (bullet points, bold emphasis for key facts, and clear paragraphs).
+- Do NOT separate your response into artificial headings like "Direct Answer", "Details", or "Sources".
+- Incorporate all pertinent facts, dates, and numbers naturally.
+- If the requested information is missing from the retrieved documents context, state that clearly and politely in your response.
+
+User Question: {user_message}
+
+Retrieved Documents Context:
+{retrieved_documents}
+{history_section}"""
              
     @staticmethod
     def get_all_templates() -> Dict[str, str]:

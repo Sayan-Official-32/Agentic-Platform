@@ -46,6 +46,11 @@ class Settings(BaseModel):
     huggingface_api_key: str = os.getenv("HUGGINGFACE_API_KEY", "")
     huggingface_model: str = os.getenv("HUGGINGFACE_MODEL", "mistralai/Mistral-7B-Instruct-v0.3")
     
+    # --- Additional Failover Provider Configurations ---
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    
     # --- Specialized Models for Multi-Agent Workflows ---
     # These settings allow routing specific tasks (code, summarization, etc.) to different LLMs if needed.
     model_summarization: str = os.getenv("MODEL_SUMMARIZATION", "") 

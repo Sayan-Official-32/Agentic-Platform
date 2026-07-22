@@ -47,6 +47,9 @@ type ChatResponse = {
   agent_results: AgentResult[];
   cached: boolean;
   context_messages?: number;
+  model_used?: string;
+  question?: string;
+  sources?: string;
 };
 
 type Message = {
@@ -286,22 +289,22 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, [files, token]);
 
-  // Auto-select files by default when they are loaded or added
+  // Auto-select files associated with the active conversation session
   useEffect(() => {
-    if (files.length > 0) {
-      setSelectedFileIds((prev) => {
-        const newIds = [...prev];
-        files.forEach((file) => {
-          if (!newIds.includes(file.id) && file.status !== "failed") {
-            newIds.push(file.id);
-          }
-        });
-        return newIds.filter((id) => files.some((f) => f.id === id));
-      });
-    } else {
+    if (files.length > 0 && activeSessionId) {
+      const activeConvFiles = files
+        .filter(
+          (f) =>
+            (f.conversation_id === activeSessionId || f.id.startsWith("temp-")) &&
+            f.status !== "failed"
+        )
+        .map((f) => f.id);
+
+      setSelectedFileIds(activeConvFiles);
+    } else if (!activeSessionId) {
       setSelectedFileIds([]);
     }
-  }, [files]);
+  }, [files, activeSessionId]);
 
   const historyPayload = useMemo(
     () =>
@@ -593,10 +596,13 @@ export default function Home() {
     setConversationId(session.conversation_id);
     
     // Restore associated document check-states
-    if (session.file_ids && Array.isArray(session.file_ids)) {
+    if (session.file_ids && Array.isArray(session.file_ids) && session.file_ids.length > 0) {
       setSelectedFileIds(session.file_ids);
     } else {
-      setSelectedFileIds([]);
+      const convFiles = files
+        .filter((f) => f.conversation_id === session.id && f.status !== "failed")
+        .map((f) => f.id);
+      setSelectedFileIds(convFiles);
     }
     
     appendLog("INFO", `Loading conversation: ${session.title}`);
@@ -1802,6 +1808,10 @@ export default function Home() {
                         response routing
                       </div>
                       <TerminalLine
+                        label={<Zap size={11} />}
+                        value={lastResponse?.model_used ?? "Groq (llama-3.1-8b)"}
+                      />
+                      <TerminalLine
                         label={<Route size={11} />}
                         value={lastResponse?.route ?? "--"}
                       />
@@ -1825,21 +1835,26 @@ export default function Home() {
 
                     <div className="terminal-block">
                       <div className="terminal-block-title">
-                        <Wrench size={10} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }} />
-                        output execution
+                        <FileText size={10} style={{ display: "inline-block", verticalAlign: "middle", marginRight: 4 }} />
+                        sources & query
                       </div>
-                      {lastResponse?.agent_results?.length ? (
-                        lastResponse.agent_results.map((result) => (
-                          <div key={result.agent} className="agent-output-card">
-                            <div className="agent-output-header">
-                              <span>{result.agent}</span>
-                              <span className="panel-header-mono">●</span>
-                            </div>
-                            <pre className="agent-pre">{result.output}</pre>
+                      {lastResponse ? (
+                        <div className="agent-output-card">
+                          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-primary)", marginBottom: "8px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "6px" }}>
+                            Question: &quot;{lastResponse.question || "--"}&quot;
                           </div>
-                        ))
+                          <div className="agent-output-header">
+                            <span>Retrieved Context Chunks</span>
+                            <span className="panel-header-mono">●</span>
+                          </div>
+                          <pre className="agent-pre">
+                            {lastResponse.sources && lastResponse.sources.trim()
+                              ? lastResponse.sources
+                              : "No external document sources retrieved for this route."}
+                          </pre>
+                        </div>
                       ) : (
-                        <div className="empty-placeholder">No outputs yet</div>
+                        <div className="empty-placeholder">No query executed yet</div>
                       )}
                     </div>
 

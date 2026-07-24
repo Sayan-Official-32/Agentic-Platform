@@ -108,7 +108,9 @@ type UserFile = {
 };
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_BACKEND_URL && process.env.NEXT_PUBLIC_BACKEND_URL.trim() !== ""
+    ? process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, "")
+    : "";
 
 const TOKEN_STORAGE_KEY = "multi-agent-starter-token";
 const EMAIL_STORAGE_KEY = "multi-agent-starter-email";

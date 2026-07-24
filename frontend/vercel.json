@@ -5,5 +5,15 @@
   "outputDirectory": ".next",
   "regions": ["iad1"],
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "http://agentic-ai-alb-1033949082.us-east-1.elb.amazonaws.com/health"
+    },
+    {
+      "source": "/api/v1/:path*",
+      "destination": "http://agentic-ai-alb-1033949082.us-east-1.elb.amazonaws.com/api/v1/:path*"
+    }
+  ]
 }
